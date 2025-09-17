@@ -1,6 +1,6 @@
 # Garlic-Launcher - Android Launcher for Digital Signage
 
-The Garlic-Launcher is useful to create a [digital signage player](https://smil-control.com/magazine/what-is-a-digital-signage-player/) on Android hardware in combination with the [garlic-player](https://garlic-player.com).
+The Garlic-Launcher is useful to create a [digital signage player](https://smil-control.com/magazine/what-is-a-digital-signage-player/) on Android hardware in combination with the [garlic-player](https://garlic-signage.com/garlic-player/).
 
 **A rooted Android is not necessary!**
 
@@ -46,8 +46,8 @@ You can download latest signed build from the [CI-Server](https://garlic-player.
 
 ## Installation
 
-[Installation-Guide](https://garlic-player.com/garlic-launcher/docs/installation/)
+[Installation-Guide](https://garlic-signage.com/garlic-launcher/docs/installation/)
 
 ## Configuration
 
-[Settings-Guide](https://garlic-player.com/garlic-launcher/docs/settings/)
+[Settings-Guide](https://garlic-signage.com/garlic-launcher/docs/settings/)
