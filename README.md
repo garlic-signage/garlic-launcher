@@ -51,3 +51,10 @@ You can download latest signed build from the [CI-Server](https://garlic-player.
 ## Configuration
 
 [Settings-Guide](https://garlic-signage.com/garlic-launcher/docs/settings/)
+
+## Recent Compatibility Updates
+
+To ensure the launcher is secure, modern, and compatible with the latest Android security and Google Play Protect requirements:
+- **Target SDK Version Updated**: Set `targetSdkVersion` to `34` in `build.gradle` to target Android 14. This prevents Google Play Protect from blocking the installation and warning about old Android versions.
+- **Dynamic Receiver Registration Flags**: Updated `ReceiverManager.java` to dynamically check the Android version and register broadcast receivers with `Context.RECEIVER_EXPORTED` on Android 13+ (API level 33+). This ensures that communication between garlic-launcher and garlic-player functions correctly and securely on newer Android releases.
+

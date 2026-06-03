@@ -22,6 +22,7 @@ android {
     defaultConfig {
         applicationId "com.sagiadinos.garlic.launcher"
         minSdkVersion 25
+        targetSdkVersion 34
     }
     signingConfigs {
         // For singing keystore.properties includes the credentials

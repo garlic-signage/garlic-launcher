@@ -19,7 +19,9 @@
 
 package com.sagiadinos.garlic.launcher.receiver;
 
+import android.content.Context;
 import android.content.IntentFilter;
+import android.os.Build;
 import com.sagiadinos.garlic.launcher.MainActivity;
 
 public class ReceiverManager
@@ -37,24 +39,48 @@ public class ReceiverManager
     public void registerAllReceiver()
     {
         MyPlayerNotInForegroundReceiver =  new InForegroundReceiver();
-        MyMainActivity.registerReceiver(
-                MyPlayerNotInForegroundReceiver,
-                createIntentFilter("InForegroundReceiver")
-        );
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            MyMainActivity.registerReceiver(
+                    MyPlayerNotInForegroundReceiver,
+                    createIntentFilter("InForegroundReceiver"),
+                    Context.RECEIVER_EXPORTED
+            );
+        } else {
+            MyMainActivity.registerReceiver(
+                    MyPlayerNotInForegroundReceiver,
+                    createIntentFilter("InForegroundReceiver")
+            );
+        }
         MyPlayerNotInForegroundReceiver.setMyActivity(MyMainActivity);
 
         MyPlayerClosedReceiver =  new PlayerClosedReceiver();
-        MyMainActivity.registerReceiver(
-                MyPlayerClosedReceiver,
-                createIntentFilter("PlayerClosedReceiver")
-        );
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            MyMainActivity.registerReceiver(
+                    MyPlayerClosedReceiver,
+                    createIntentFilter("PlayerClosedReceiver"),
+                    Context.RECEIVER_EXPORTED
+            );
+        } else {
+            MyMainActivity.registerReceiver(
+                    MyPlayerClosedReceiver,
+                    createIntentFilter("PlayerClosedReceiver")
+            );
+        }
         MyPlayerClosedReceiver.setMyActivity(MyMainActivity);
 
         MySecondAppReceiver =  new SecondAppReceiver();
-        MyMainActivity.registerReceiver(
-                MySecondAppReceiver,
-                createIntentFilter("SecondAppReceiver")
-        );
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            MyMainActivity.registerReceiver(
+                    MySecondAppReceiver,
+                    createIntentFilter("SecondAppReceiver"),
+                    Context.RECEIVER_EXPORTED
+            );
+        } else {
+            MyMainActivity.registerReceiver(
+                    MySecondAppReceiver,
+                    createIntentFilter("SecondAppReceiver")
+            );
+        }
         MySecondAppReceiver.setMyActivity(MyMainActivity);
 
     }
