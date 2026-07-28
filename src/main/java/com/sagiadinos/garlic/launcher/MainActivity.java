@@ -360,12 +360,6 @@ public class MainActivity extends Activity
         btToggleServiceMode  = findViewById(R.id.btToggleServiceMode);
         btStartPlayer        = findViewById(R.id.btStartPlayer);
 
-        if (BuildConfig.DEBUG)
-        {
-            Button btForTest = findViewById(R.id.btForTest);
-            btForTest.setVisibility(View.VISIBLE);
-        }
-
         Button btAdminConfiguration = findViewById(R.id.btAdminConfiguration);
         Button btAndroidSettings    = findViewById(R.id.btAndroidSettings);
 
@@ -503,8 +497,6 @@ public class MainActivity extends Activity
         sendBroadcast(i);
  */
         // start an app
-
-        startApp("com.google.android.apps.maps");
     }
 
     public void stopPlayer()
