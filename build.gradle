@@ -17,7 +17,11 @@ repositories {
 
 android {
     namespace "com.sagiadinos.garlic.launcher"
-    compileSdk 34
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 1
+        }
+    }
     sourceSets { main { java.srcDirs = ['src/main/java', 'src/main/java/Utilis'] } }
     defaultConfig {
         applicationId "com.sagiadinos.garlic.launcher"
