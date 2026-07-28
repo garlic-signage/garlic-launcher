@@ -73,7 +73,6 @@ android {
                 ]
         }
     }
-    compileSdkVersion 33
 }
 
 dependencies {
