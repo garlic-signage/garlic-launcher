@@ -21,14 +21,20 @@ package com.sagiadinos.garlic.launcher.helper;
 
 import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageInfo;
 import android.os.Build;
 import android.os.UserManager;
 import android.provider.Settings;
 import android.util.Log;
 
 import com.sagiadinos.garlic.launcher.BuildConfig;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 
 /**
@@ -54,6 +60,11 @@ public class DeviceOwner
 
     public static final String LAUNCHER_PACKAGE_NAME = "com.sagiadinos.garlic.launcher";
     public static final String PLAYER_PACKAGE_NAME = "com.sagiadinos.garlic.player";
+
+    private static final String[] DEFAULT_LOCK_TASK_PACKAGES = {
+            DeviceOwner.LAUNCHER_PACKAGE_NAME,
+            DeviceOwner.PLAYER_PACKAGE_NAME
+    };
 
     public DeviceOwner(DevicePolicyManager dpm, ComponentName da, ComponentName activity, IntentFilter filter)
     {
@@ -166,25 +177,29 @@ public class DeviceOwner
 
     /**
      *
-     * @param second_app_name String
+     * @param secondAppName String
      */
-    public void determinePermittedLockTaskPackages(String second_app_name)
+    public void determinePermittedLockTaskPackages(Context ctx, String secondAppName)
     {
-        String[] s;
-        if (second_app_name == null)
+        List<String> packages = new ArrayList<>(
+                Arrays.asList(DEFAULT_LOCK_TASK_PACKAGES));
+
+        for (PackageInfo pkg : ctx.getPackageManager().getInstalledPackages(0))
         {
-            return;
+            if (pkg.packageName.startsWith("com.anydesk"))
+            {
+                if (!packages.contains(pkg.packageName))
+                {
+                    packages.add(pkg.packageName);
+                }
+            }
         }
-        if (second_app_name.isEmpty())
+        if (secondAppName != null && !secondAppName.isEmpty() && !packages.contains(secondAppName))
         {
-            s = new String[]{DeviceOwner.LAUNCHER_PACKAGE_NAME, DeviceOwner.PLAYER_PACKAGE_NAME};
+            packages.add(secondAppName);
         }
-        else
-        {
-            s = new String[]{LAUNCHER_PACKAGE_NAME, PLAYER_PACKAGE_NAME, second_app_name};
-        }
-        // Todo Later Clear or add functionality
-        MyDevicePolicyManager.setLockTaskPackages(MyDeviceAdmin, s);
+
+        MyDevicePolicyManager.setLockTaskPackages(MyDeviceAdmin,  packages.toArray(new String[0]));
     }
 
 }

@@ -188,7 +188,7 @@ public class MainActivity extends Activity
         PlayerCountDown = new LauncherCountDownTimer(this);
 
         MyKiosk.pin();
-        MyDeviceOwner.determinePermittedLockTaskPackages("");
+        MyDeviceOwner.determinePermittedLockTaskPackages(this,"");
         hideInformationText();
         MyReceiverManager = new ReceiverManager(this);
         MyReceiverManager.registerAllReceiver();
@@ -553,7 +553,7 @@ public class MainActivity extends Activity
         has_second_app_started = true;
         current_player_state   = PlayerState.STOPPED;
         NavigationBar.show(this, MyMainConfiguration, new Intent(this, HUD.class));
-        MyDeviceOwner.determinePermittedLockTaskPackages(package_name);
+        MyDeviceOwner.determinePermittedLockTaskPackages(this, package_name);
         stopService(new Intent(this, WatchDogService.class)); // this is ok no nesting or leaks
         startApp(package_name);
     }
