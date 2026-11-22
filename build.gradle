@@ -8,6 +8,10 @@ buildscript {
     }
 }
 
+plugins {
+    id 'org.cyclonedx.bom' version '3.6.1'
+}
+
 apply plugin: 'com.android.application'
 
 repositories {
@@ -91,3 +95,12 @@ allprojects {
 }
 
  */
+
+// SBOM (CycloneDX JSON) of the release build, for the CRA: ./gradlew cyclonedxDirectBom
+// writes build/reports/sbom/garlic-launcher.cdx.json. Attach it to every release.
+tasks.named('cyclonedxDirectBom') {
+    includeConfigs = ['GarlicLauncherReleaseRuntimeClasspath']
+    projectType = org.cyclonedx.model.Component.Type.APPLICATION
+    jsonOutput = layout.buildDirectory.file('reports/sbom/garlic-launcher.cdx.json')
+    xmlOutput.convention((org.gradle.api.file.RegularFile) null)
+}

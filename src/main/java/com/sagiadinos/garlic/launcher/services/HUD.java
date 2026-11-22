@@ -38,7 +38,7 @@ import java.io.IOException;
  *
  * Necessary when you a have a custom Android image with deactivated navigation bar
  * It is intended to prevent a user from being stranded in an activity,
- * e.g. a second app, and not being able to return to the launcher.
+ * and not being able to return to the launcher.
  *
  * Attention: Needs root rights, which is suboptimal.
  *

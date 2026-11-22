@@ -80,7 +80,6 @@ public class MainActivity extends Activity
     }
     private PlayerState current_player_state = PlayerState.STOPPED;
 
-    private boolean        has_second_app_started = false;
     private Button         btToggleServiceMode = null;
     private Button         btStartPlayer = null;
     private TextView       tvInformation   = null;
@@ -188,7 +187,7 @@ public class MainActivity extends Activity
         PlayerCountDown = new LauncherCountDownTimer(this);
 
         MyKiosk.pin();
-        MyDeviceOwner.determinePermittedLockTaskPackages(this,"");
+        MyDeviceOwner.determinePermittedLockTaskPackages(this);
         hideInformationText();
         MyReceiverManager = new ReceiverManager(this);
         MyReceiverManager.registerAllReceiver();
@@ -392,11 +391,6 @@ public class MainActivity extends Activity
         MyKiosk.becomeHomeActivity();
     }
 
-    public boolean hasSecondAppStarted()
-    {
-        return has_second_app_started;
-    }
-
     public void setPlayerStatus(PlayerState state)
     {
         current_player_state = state;
@@ -540,22 +534,11 @@ public class MainActivity extends Activity
     public void startGarlicPlayerInstantly(View view)
     {
         PlayerCountDown.cancel();
-        has_second_app_started = false;
         MyMainConfiguration.toggleJustBooted(false);
         NavigationBar.hide(this, MyMainConfiguration, new Intent(this, HUD.class));
         startService(new Intent(this, WatchDogService.class)); // this is ok no nesting or leaks
         current_player_state   = PlayerState.PLAYING;
         startApp(DeviceOwner.PLAYER_PACKAGE_NAME);
-    }
-
-    public void startSecondApp(String package_name)
-    {
-        has_second_app_started = true;
-        current_player_state   = PlayerState.STOPPED;
-        NavigationBar.show(this, MyMainConfiguration, new Intent(this, HUD.class));
-        MyDeviceOwner.determinePermittedLockTaskPackages(this, package_name);
-        stopService(new Intent(this, WatchDogService.class)); // this is ok no nesting or leaks
-        startApp(package_name);
     }
 
     private void startApp(String package_name)

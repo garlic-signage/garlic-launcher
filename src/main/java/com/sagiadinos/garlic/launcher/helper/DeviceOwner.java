@@ -175,11 +175,7 @@ public class DeviceOwner
         }
     }
 
-    /**
-     *
-     * @param secondAppName String
-     */
-    public void determinePermittedLockTaskPackages(Context ctx, String secondAppName)
+    public void determinePermittedLockTaskPackages(Context ctx)
     {
         List<String> packages = new ArrayList<>(
                 Arrays.asList(DEFAULT_LOCK_TASK_PACKAGES));
@@ -194,11 +190,6 @@ public class DeviceOwner
                 }
             }
         }
-        if (secondAppName != null && !secondAppName.isEmpty() && !packages.contains(secondAppName))
-        {
-            packages.add(secondAppName);
-        }
-
         MyDevicePolicyManager.setLockTaskPackages(MyDeviceAdmin,  packages.toArray(new String[0]));
     }
 

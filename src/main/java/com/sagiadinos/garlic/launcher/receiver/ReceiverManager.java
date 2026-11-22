@@ -27,7 +27,6 @@ public class ReceiverManager
     private final MainActivity MyMainActivity;
     private InForegroundReceiver MyPlayerNotInForegroundReceiver = null;
     private PlayerClosedReceiver MyPlayerClosedReceiver = null;
-    private SecondAppReceiver MySecondAppReceiver = null;
 
     public ReceiverManager(MainActivity ma)
     {
@@ -50,13 +49,6 @@ public class ReceiverManager
         );
         MyPlayerClosedReceiver.setMyActivity(MyMainActivity);
 
-        MySecondAppReceiver =  new SecondAppReceiver();
-        MyMainActivity.registerReceiver(
-                MySecondAppReceiver,
-                createIntentFilter("SecondAppReceiver")
-        );
-        MySecondAppReceiver.setMyActivity(MyMainActivity);
-
     }
 
     public void unregisterAllReceiver()
@@ -66,7 +58,6 @@ public class ReceiverManager
 
         MyMainActivity.unregisterReceiver(MyPlayerNotInForegroundReceiver);
         MyMainActivity.unregisterReceiver(MyPlayerClosedReceiver);
-        MyMainActivity.unregisterReceiver(MySecondAppReceiver);
     }
 
     private IntentFilter createIntentFilter(String action_name)

@@ -135,10 +135,6 @@
             </intent-filter>
         </receiver>
         <receiver
-            android:name=".receiver.SecondAppReceiver"
-            android:enabled="true"
-            android:exported="false" />
-        <receiver
             android:name=".receiver.UsbConnectionReceiver"
             android:enabled="true"
             android:exported="false">

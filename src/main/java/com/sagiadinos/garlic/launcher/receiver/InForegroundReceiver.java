@@ -28,7 +28,7 @@ import com.sagiadinos.garlic.launcher.MainActivity;
 /**
  * This Receiver will be called from the player background service (Watchdog)
  *
- * It decides if the player should start again or wait until a probably second app finished.
+ * It decides if the player should start again.
  */
 public class InForegroundReceiver extends BroadcastReceiver
 {
@@ -60,16 +60,15 @@ public class InForegroundReceiver extends BroadcastReceiver
         // This can happen consciously or  due to a crahs app crash so we had to examine
         //
         // Opportunities
-        // 1. player started or second app started booleans are true
-        // that could be mean the player is crashed or second app is finished/crashed
+        // 1. player state is playing
+        // that could be mean the player is crashed
         // => in this case start player!
         //
-        // 2. if player start and second app flags booleans are both false
+        // 2. player state is not playing
         // that means the player was closed consciously and the user wants to stay
         // in a launcher activity (waiting or for configuration)
         // => in this case do nothing!
-        boolean is_playing = MyActivity.isPlayerPlaying();
-        if (is_playing && !MyActivity.hasSecondAppStarted())
+        if (MyActivity.isPlayerPlaying())
         {
             MyActivity.startGarlicPlayerInstantly(null);
         }
