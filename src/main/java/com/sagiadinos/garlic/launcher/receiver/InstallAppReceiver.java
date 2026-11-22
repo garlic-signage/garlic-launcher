@@ -22,6 +22,7 @@ package com.sagiadinos.garlic.launcher.receiver;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,6 +32,7 @@ import com.sagiadinos.garlic.launcher.configuration.SharedPreferencesModel;
 import com.sagiadinos.garlic.launcher.helper.DeviceOwner;
 import com.sagiadinos.garlic.launcher.helper.Installer;
 import com.sagiadinos.garlic.launcher.helper.ShellExecute;
+import com.sagiadinos.garlic.launcher.helper.SignatureVerifier;
 import com.sagiadinos.garlic.launcher.helper.TaskExecutionReport;
 
 
@@ -38,12 +40,13 @@ import com.sagiadinos.garlic.launcher.helper.TaskExecutionReport;
  * This receiver is responsible for signal to install
  * a software.
  *
- * ToDo: We need to implement some security here
- * so that only registered software packages could be installed.
+ * Only APKs signed with the certificate of the launcher are installed.
+ * Launcher and player share the signing key, so this covers updates of both.
  *
  */
 public class InstallAppReceiver extends BroadcastReceiver
 {
+    private static final String TAG = "InstallAppReceiver";
     MainConfiguration MyMainConfiguration;
     @Override
     public void onReceive(Context ctx, Intent intent)
@@ -66,6 +69,21 @@ public class InstallAppReceiver extends BroadcastReceiver
         {
             task_id = intent.getStringExtra("task_id");
         }
+        if (file_path == null)
+        {
+            TaskExecutionReport.append(task_id, "aborted");
+            return;
+        }
+
+        SignatureVerifier MyVerifier = new SignatureVerifier(ctx.getPackageManager(), ctx.getPackageName());
+        if (!MyVerifier.isSignedLikeReference(file_path))
+        {
+            Log.w(TAG, "Rejected installation of " + file_path + ": signature does not match the launcher");
+            TaskExecutionReport.append(task_id, "aborted");
+            deleteFromPlayerCache(file_path);
+            return;
+        }
+
         try
         {
             if (MyMainConfiguration.isDeviceRooted())
@@ -89,9 +107,16 @@ public class InstallAppReceiver extends BroadcastReceiver
             TaskExecutionReport.append(task_id, "aborted");
         }
 
-        // delete downloaded files in all cases which are in player cache
-        // important! No delete - No further updates
-        if (file_path != null && file_path.contains("cache"))
+        deleteFromPlayerCache(file_path);
+    }
+
+    /**
+     * delete downloaded files in all cases which are in player cache
+     * important! No delete - No further updates
+     */
+    private void deleteFromPlayerCache(String file_path)
+    {
+        if (file_path.contains("cache"))
         {
             File file = new File(file_path);
             //noinspection ResultOfMethodCallIgnored
