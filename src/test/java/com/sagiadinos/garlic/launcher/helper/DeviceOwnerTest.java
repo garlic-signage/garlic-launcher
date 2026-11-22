@@ -2,19 +2,27 @@ package com.sagiadinos.garlic.launcher.helper;
 
 import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.util.Log;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -45,9 +53,25 @@ class DeviceOwnerTest
     {
         DeviceOwner MyTestClass = createClass();
         ShellExecute ShellExecuteMocked = mock(ShellExecute.class);
+        when(ShellExecuteMocked.executeAsRoot(anyString())).thenReturn(true);
 
-        MyTestClass.makeDeviceOwner(ShellExecuteMocked);
+        assertTrue(MyTestClass.makeDeviceOwner(ShellExecuteMocked));
         verify(ShellExecuteMocked, times(1)).executeAsRoot("dpm set-device-owner com.sagiadinos.garlic.launcher/.receiver.AdminReceiver");
+    }
+
+    @Test
+    void makeDeviceOwnerFails()
+    {
+        DeviceOwner MyTestClass = createClass();
+        ShellExecute ShellExecuteMocked = mock(ShellExecute.class);
+        when(ShellExecuteMocked.executeAsRoot(anyString())).thenReturn(false);
+        when(ShellExecuteMocked.getErrorText()).thenReturn("error");
+
+        try (MockedStatic<Log> ignored = mockStatic(Log.class))
+        {
+            assertFalse(MyTestClass.makeDeviceOwner(ShellExecuteMocked));
+        }
+        verify(ShellExecuteMocked, times(1)).getErrorText();
     }
 
     @Test
@@ -56,7 +80,7 @@ class DeviceOwnerTest
         DeviceOwner MyTestClass = createClass();
 
         MyTestClass.activateRestrictions();
-        verify(DevicePolicyManagerMocked, times(6)).addUserRestriction(any(ComponentName.class), anyString());
+        verify(DevicePolicyManagerMocked, times(5)).addUserRestriction(any(ComponentName.class), anyString());
 
     }
 
@@ -66,7 +90,7 @@ class DeviceOwnerTest
     {
         DeviceOwner MyTestClass = createClass();
         MyTestClass.deactivateRestrictions();
-        verify(DevicePolicyManagerMocked, times(6)).clearUserRestriction(any(ComponentName.class), anyString());
+        verify(DevicePolicyManagerMocked, times(5)).clearUserRestriction(any(ComponentName.class), anyString());
     }
 
     @Test
@@ -159,32 +183,38 @@ class DeviceOwnerTest
     }
 
     @Test
-    void determinePermittedLockTaskPackagesEmpty()
+    void determinePermittedLockTaskPackagesDefault()
     {
         DeviceOwner MyTestClass = createClass();
-        MyTestClass.determinePermittedLockTaskPackages("");
+        MyTestClass.determinePermittedLockTaskPackages(createContext("com.example.other"));
         String[] s = new String[]{DeviceOwner.LAUNCHER_PACKAGE_NAME, DeviceOwner.PLAYER_PACKAGE_NAME};
         verify(DevicePolicyManagerMocked, times(1)).setLockTaskPackages(DeviceAdminMocked, s);
     }
 
     @Test
-    void determinePermittedLockTaskPackagesNull()
+    void determinePermittedLockTaskPackagesWithAnyDesk()
     {
         DeviceOwner MyTestClass = createClass();
-        MyTestClass.determinePermittedLockTaskPackages(null);
-        String[] s = new String[]{DeviceOwner.LAUNCHER_PACKAGE_NAME, DeviceOwner.PLAYER_PACKAGE_NAME};
-        verify(DevicePolicyManagerMocked, never()).setLockTaskPackages(DeviceAdminMocked, s);
-    }
-
-    @Test
-    void determinePermittedLockTaskPackagesWithValue()
-    {
-        DeviceOwner MyTestClass = createClass();
-        MyTestClass.determinePermittedLockTaskPackages("com.sagiadinos.secondapp");
-        String[] s = new String[]{DeviceOwner.LAUNCHER_PACKAGE_NAME, DeviceOwner.PLAYER_PACKAGE_NAME, "com.sagiadinos.secondapp"};
+        MyTestClass.determinePermittedLockTaskPackages(createContext("com.example.other", "com.anydesk.anydeskandroid"));
+        String[] s = new String[]{DeviceOwner.LAUNCHER_PACKAGE_NAME, DeviceOwner.PLAYER_PACKAGE_NAME, "com.anydesk.anydeskandroid"};
         verify(DevicePolicyManagerMocked, times(1)).setLockTaskPackages(DeviceAdminMocked, s);
     }
 
+    Context createContext(String... package_names)
+    {
+        List<PackageInfo> installed = new ArrayList<>();
+        for (String package_name : package_names)
+        {
+            PackageInfo info = mock(PackageInfo.class);
+            info.packageName = package_name;
+            installed.add(info);
+        }
+        PackageManager PackageManagerMocked = mock(PackageManager.class);
+        when(PackageManagerMocked.getInstalledPackages(0)).thenReturn(installed);
+        Context ContextMocked = mock(Context.class);
+        when(ContextMocked.getPackageManager()).thenReturn(PackageManagerMocked);
+        return ContextMocked;
+    }
 
     DeviceOwner createClass()
     {

@@ -1,81 +1,64 @@
 package com.sagiadinos.garlic.launcher.helper;
 
+import com.sagiadinos.garlic.launcher.BuildConfig;
+import com.sagiadinos.garlic.launcher.MainActivity;
 import com.sagiadinos.garlic.launcher.configuration.MainConfiguration;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class KioskManagerTest
 {
-    @Mock
-    DeviceOwner DeviceOwnerMocked;
-    @Mock
+    DeviceOwner          DeviceOwnerMocked;
     HomeLauncherManager  HomeLauncherManagerMocked;
-    @Mock
-    LockTaskManager      LockTaskManagerMocked;
-    @Mock
-    MainConfiguration MainConfigurationMocked;
+    MainActivity         MainActivityMocked;
+    MainConfiguration    MainConfigurationMocked;
 
     @AfterEach
     void tearDown()
     {
-        DeviceOwnerMocked = null;
+        DeviceOwnerMocked         = null;
         HomeLauncherManagerMocked = null;
-        LockTaskManagerMocked = null;
-        MainConfigurationMocked = null;
+        MainActivityMocked        = null;
+        MainConfigurationMocked   = null;
     }
 
     @Test
-    void startKioskModeSuccess()
+    void pinLockTaskPermitted()
     {
         KioskManager MyTestClass = createClass();
-        when(DeviceOwnerMocked.isAdminActive()).thenReturn(true);
-        when(DeviceOwnerMocked.isDeviceOwner()).thenReturn(true);
         when(DeviceOwnerMocked.isLockTaskPermitted()).thenReturn(true);
 
-        MyTestClass.becomeHomeActivity();
-        verify(LockTaskManagerMocked, times(1)).startLockTask();
-        verify(HomeLauncherManagerMocked, times(1)).becomeHomeActivity(DeviceOwnerMocked);
+        MyTestClass.pin();
+
+        // pin() is deactivated in debug builds
+        verify(MainActivityMocked, times(BuildConfig.DEBUG ? 0 : 1)).startLockTask();
     }
 
     @Test
-    void startKioskModeFailsAdminActive()
-    {
-        KioskManager MyTestClass = createClass();
-        when(DeviceOwnerMocked.isAdminActive()).thenReturn(false);
-
-        MyTestClass.becomeHomeActivity();
-        verify(LockTaskManagerMocked, times(0)).startLockTask();
-        verify(HomeLauncherManagerMocked, times(0)).becomeHomeActivity(DeviceOwnerMocked);
-    }
-
-
-    @Test
-    void startKioskModeFailsDeviceOwner()
-    {
-        KioskManager MyTestClass = createClass();
-        when(DeviceOwnerMocked.isDeviceOwner()).thenReturn(false);
-
-        MyTestClass.becomeHomeActivity();
-        verify(LockTaskManagerMocked, times(0)).startLockTask();
-        verify(HomeLauncherManagerMocked, times(0)).becomeHomeActivity(DeviceOwnerMocked);
-    }
-
-    @Test
-    void startKioskModeFailsLockTaskPermitted()
+    void pinLockTaskNotPermitted()
     {
         KioskManager MyTestClass = createClass();
         when(DeviceOwnerMocked.isLockTaskPermitted()).thenReturn(false);
 
         MyTestClass.pin();
-        verify(LockTaskManagerMocked, times(0)).startLockTask();
+        verify(MainActivityMocked, never()).startLockTask();
+    }
+
+    @Test
+    void unpin()
+    {
+        KioskManager MyTestClass = createClass();
+
+        MyTestClass.unpin();
+        verify(MainActivityMocked, times(1)).stopLockTask();
     }
 
     @Test
@@ -95,7 +78,6 @@ class KioskManagerTest
         MyTestClass.toggleServiceMode(false);
         verify(MainConfigurationMocked, times(1)).setStrictKioskMode(true);
     }
-
 
     @Test
     void isStrictKioskModeActive()
@@ -127,36 +109,46 @@ class KioskManagerTest
         verify(HomeLauncherManagerMocked, times(1)).isHomeActivity();
     }
 
-
     @Test
     void becomeHomeActivitySuccess()
     {
         KioskManager MyTestClass = createClass();
         when(DeviceOwnerMocked.isAdminActive()).thenReturn(true);
         when(DeviceOwnerMocked.isDeviceOwner()).thenReturn(true);
-        when(DeviceOwnerMocked.isLockTaskPermitted()).thenReturn(true);
 
         MyTestClass.becomeHomeActivity();
         verify(HomeLauncherManagerMocked, times(1)).becomeHomeActivity(DeviceOwnerMocked);
     }
 
     @Test
-    void becomeHomeActivityFails()
+    void becomeHomeActivityFailsAdminActive()
     {
         KioskManager MyTestClass = createClass();
+        when(DeviceOwnerMocked.isAdminActive()).thenReturn(false);
+        when(DeviceOwnerMocked.isDeviceOwner()).thenReturn(true);
+
+        MyTestClass.becomeHomeActivity();
+        verify(HomeLauncherManagerMocked, never()).becomeHomeActivity(DeviceOwnerMocked);
+    }
+
+    @Test
+    void becomeHomeActivityFailsDeviceOwner()
+    {
+        KioskManager MyTestClass = createClass();
+        when(DeviceOwnerMocked.isAdminActive()).thenReturn(true);
         when(DeviceOwnerMocked.isDeviceOwner()).thenReturn(false);
 
         MyTestClass.becomeHomeActivity();
-        verify(HomeLauncherManagerMocked, times(0)).becomeHomeActivity(DeviceOwnerMocked);
+        verify(HomeLauncherManagerMocked, never()).becomeHomeActivity(DeviceOwnerMocked);
     }
 
     KioskManager createClass()
     {
         DeviceOwnerMocked         = mock(DeviceOwner.class);
         HomeLauncherManagerMocked = mock(HomeLauncherManager.class);
-        LockTaskManagerMocked     = mock(LockTaskManager.class);
+        MainActivityMocked        = mock(MainActivity.class);
         MainConfigurationMocked   = mock(MainConfiguration.class);
-        return new KioskManager(DeviceOwnerMocked, HomeLauncherManagerMocked, LockTaskManagerMocked, MainConfigurationMocked);
+        return new KioskManager(DeviceOwnerMocked, HomeLauncherManagerMocked, MainActivityMocked, MainConfigurationMocked);
     }
 
 }

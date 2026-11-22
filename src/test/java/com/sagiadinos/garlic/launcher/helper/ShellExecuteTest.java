@@ -46,7 +46,7 @@ class ShellExecuteTest
         String command           = "run this command";
 
         when(RuntimeMocked.exec("su\n")).thenReturn(ProcessMocked);
-        when(ProcessMocked.getOutputStream()).thenReturn(mock(OutputStream.class));
+        stubProcessStreams();
         when(ProcessMocked.waitFor()).thenReturn(10);
 
         assertFalse(MyTestClass.executeAsRoot(command));
@@ -59,12 +59,12 @@ class ShellExecuteTest
         ShellExecute MyTestClass = createClass();
         String command           = "run this command";
 
-        when(RuntimeMocked.exec("")).thenReturn(ProcessMocked);
-        when(ProcessMocked.getOutputStream()).thenReturn(mock(OutputStream.class));
+        when(RuntimeMocked.exec("sh\n")).thenReturn(ProcessMocked);
+        stubProcessStreams();
         when(ProcessMocked.waitFor()).thenReturn(0);
 
         assertTrue(MyTestClass.executeAsUser(command));
-        verify(RuntimeMocked, times(1)).exec("");
+        verify(RuntimeMocked, times(1)).exec("sh\n");
     }
 
     @Test
@@ -97,11 +97,18 @@ class ShellExecuteTest
         String command           = "run this command";
 
         when(RuntimeMocked.exec("su\n")).thenReturn(ProcessMocked);
-        when(ProcessMocked.getOutputStream()).thenReturn(mock(OutputStream.class));
+        stubProcessStreams();
         when(ProcessMocked.waitFor()).thenReturn(0);
         assertTrue(MyTestClass.executeAsRoot(command));
 
         return MyTestClass;
+    }
+
+    void stubProcessStreams()
+    {
+        when(ProcessMocked.getOutputStream()).thenReturn(mock(OutputStream.class));
+        when(ProcessMocked.getInputStream()).thenReturn(new ByteArrayInputStream(new byte[0]));
+        when(ProcessMocked.getErrorStream()).thenReturn(new ByteArrayInputStream(new byte[0]));
     }
 
     ShellExecute createClass()

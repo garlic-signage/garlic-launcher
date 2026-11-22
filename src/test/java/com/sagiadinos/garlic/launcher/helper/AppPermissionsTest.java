@@ -2,198 +2,236 @@ package com.sagiadinos.garlic.launcher.helper;
 
 import android.Manifest;
 import android.app.Activity;
-import android.widget.TextView;
+import android.content.pm.PackageManager;
+import android.util.Log;
 
 import com.sagiadinos.garlic.launcher.configuration.MainConfiguration;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
+import org.mockito.MockedStatic;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Build.VERSION.SDK_INT is 0 in local unit tests, so only the branches
+ * below Android O (base storage permissions) are covered here.
+ */
 class AppPermissionsTest
 {
-    @Mock
+    private static final int REQUEST_PERMISSIONS = 1;
+    private static final String[] BASE_PERMISSIONS_LIST = {
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+    };
+
     MainConfiguration MainConfigurationMocked;
-    @Mock
-    Activity MainActivityMocked;
+    Activity          ActivityMocked;
+    ShellExecute      ShellExecuteMocked;
 
     @AfterEach
     void tearDown()
     {
         MainConfigurationMocked = null;
-        MainActivityMocked         = null;
-    }
-
-    @Test
-    void onRequestPermissionsResultNotGranted()
-    {
-        final int[] grant_results = {1, 2, 3};
-        final String[] PERMISSIONS_LIST = {
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-        };
-        final int REQUEST_PERMISSIONS = 1;
-
-        MainActivityMocked      = mock(Activity.class);
-
-        when(MainActivityMocked.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)).thenReturn(0);
-        when(MainActivityMocked.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)).thenReturn(1);
-
-        AppPermissions.onRequestPermissionsResult(MainActivityMocked, REQUEST_PERMISSIONS, PERMISSIONS_LIST, grant_results);
-
-        verify(MainActivityMocked, never()).recreate();
-        verify(MainActivityMocked, times(1)).finish();
+        ActivityMocked          = null;
+        ShellExecuteMocked      = null;
     }
 
     @Test
     void onRequestPermissionsResultGranted()
     {
-        final int[] grant_results = {1, 2, 3};
-        final String[] PERMISSIONS_LIST = {
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-        };
-        final int REQUEST_PERMISSIONS = 1;
+        ActivityMocked = mock(Activity.class);
+        grantBasePermissions(true, true);
 
-        MainActivityMocked      = mock(Activity.class);
+        AppPermissions.onRequestPermissionsResult(ActivityMocked, REQUEST_PERMISSIONS, BASE_PERMISSIONS_LIST, new int[]{0, 0});
 
-        when(MainActivityMocked.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)).thenReturn(0);
-        when(MainActivityMocked.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)).thenReturn(0);
-
-        AppPermissions.onRequestPermissionsResult(MainActivityMocked, REQUEST_PERMISSIONS, PERMISSIONS_LIST, grant_results);
-
-        verify(MainActivityMocked, times(1)).recreate();
-        verify(MainActivityMocked, never()).finish();
-
+        verify(ActivityMocked, times(1)).recreate();
     }
 
     @Test
-    void hasStandardPermissionsWriteNotGranted()
+    void onRequestPermissionsResultNotGranted()
     {
-        MainActivityMocked      = mock(Activity.class);
-        when(MainActivityMocked.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)).thenReturn(1);
+        ActivityMocked = mock(Activity.class);
+        grantBasePermissions(true, false);
 
-        assertFalse(AppPermissions.hasStandardPermissions(MainActivityMocked));
-        verify(MainActivityMocked, times(1)).checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        verify(MainActivityMocked, never()).checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE);
+        AppPermissions.onRequestPermissionsResult(ActivityMocked, REQUEST_PERMISSIONS, BASE_PERMISSIONS_LIST, new int[]{0, -1});
+
+        verify(ActivityMocked, never()).recreate();
     }
 
     @Test
-    void hasStandardPermissionsReadNotGranted()
+    void onRequestPermissionsResultOtherRequestCode()
     {
-        MainActivityMocked      = mock(Activity.class);
-        when(MainActivityMocked.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)).thenReturn(0);
-        when(MainActivityMocked.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)).thenReturn(1);
+        ActivityMocked = mock(Activity.class);
+        grantBasePermissions(true, true);
 
-        assertFalse(AppPermissions.hasStandardPermissions(MainActivityMocked));
+        AppPermissions.onRequestPermissionsResult(ActivityMocked, 99, BASE_PERMISSIONS_LIST, new int[]{0, 0});
 
-        verify(MainActivityMocked, times(1)).checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        verify(MainActivityMocked, times(1)).checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE);
-    }
-    @Test
-    void hasStandardPermissionsReadAndWriteGranted()
-    {
-        MainActivityMocked      = mock(Activity.class);
-        when(MainActivityMocked.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)).thenReturn(0);
-        when(MainActivityMocked.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)).thenReturn(0);
-
-        assertTrue(AppPermissions.hasStandardPermissions(MainActivityMocked));
-
-        verify(MainActivityMocked, times(1)).checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        verify(MainActivityMocked, times(1)).checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE);
+        verify(ActivityMocked, never()).recreate();
+        verify(ActivityMocked, never()).checkSelfPermission(anyString());
     }
 
+    @Test
+    void onRequestPermissionsResultEmpty()
+    {
+        ActivityMocked = mock(Activity.class);
+        grantBasePermissions(true, true);
+
+        AppPermissions.onRequestPermissionsResult(ActivityMocked, REQUEST_PERMISSIONS, BASE_PERMISSIONS_LIST, new int[]{});
+
+        verify(ActivityMocked, never()).recreate();
+    }
 
     @Test
-    void handlePermissionsAsRoot()
+    void hasAllPermissionsWriteNotGranted()
     {
-        TextView TextViewMocked         = mock(TextView.class);
-        ShellExecute ShellExecuteMocked = mock(ShellExecute.class);
+        ActivityMocked = mock(Activity.class);
+        grantBasePermissions(false, true);
 
+        assertFalse(AppPermissions.hasAllPermissions(ActivityMocked));
+        verify(ActivityMocked, times(1)).checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        verify(ActivityMocked, never()).checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE);
+    }
+
+    @Test
+    void hasAllPermissionsReadNotGranted()
+    {
+        ActivityMocked = mock(Activity.class);
+        grantBasePermissions(true, false);
+
+        assertFalse(AppPermissions.hasAllPermissions(ActivityMocked));
+        verify(ActivityMocked, times(1)).checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        verify(ActivityMocked, times(1)).checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE);
+    }
+
+    @Test
+    void hasAllPermissionsGranted()
+    {
+        ActivityMocked = mock(Activity.class);
+        grantBasePermissions(true, true);
+
+        assertTrue(AppPermissions.hasAllPermissions(ActivityMocked));
+    }
+
+    @Test
+    void handleAllPermissionsAsRoot()
+    {
         AppPermissions MyTestClass = createClass();
+        grantBasePermissions(false, false);
         when(MainConfigurationMocked.isDeviceRooted()).thenReturn(true);
         when(ShellExecuteMocked.executeAsRoot(anyString())).thenReturn(true);
 
-        MyTestClass.handleBasePermissions(TextViewMocked, ShellExecuteMocked);
+        MyTestClass.handleAllPermissions();
 
-        verify(ShellExecuteMocked, times(3)).executeAsRoot(anyString());
-        verify(ShellExecuteMocked, never()).getErrorText();
-        verify(TextViewMocked, never()).setText(anyString());
+        verify(ShellExecuteMocked, times(1)).executeAsRoot("pm grant " + DeviceOwner.LAUNCHER_PACKAGE_NAME + " android.permission.WRITE_EXTERNAL_STORAGE");
+        verify(ShellExecuteMocked, times(1)).executeAsRoot("pm grant " + DeviceOwner.LAUNCHER_PACKAGE_NAME + " android.permission.READ_EXTERNAL_STORAGE");
+        verify(ActivityMocked, never()).requestPermissions(any(String[].class), any(Integer.class));
+        assertEquals("", MyTestClass.getErrorText());
     }
 
     @Test
-    void handlePermissionsAsRootFails()
+    void handleAllPermissionsAsRootFails()
     {
-        TextView TextViewMocked         = mock(TextView.class);
-        ShellExecute ShellExecuteMocked = mock(ShellExecute.class);
-
         AppPermissions MyTestClass = createClass();
+        grantBasePermissions(true, false);
         when(MainConfigurationMocked.isDeviceRooted()).thenReturn(true);
         when(ShellExecuteMocked.executeAsRoot(anyString())).thenReturn(false);
         when(ShellExecuteMocked.getErrorText()).thenReturn("error");
 
-        MyTestClass.handleBasePermissions(TextViewMocked, ShellExecuteMocked);
+        try (MockedStatic<Log> ignored = mockStatic(Log.class))
+        {
+            MyTestClass.handleAllPermissions();
+        }
 
         verify(ShellExecuteMocked, times(1)).executeAsRoot(anyString());
-        verify(ShellExecuteMocked, times(1)).getErrorText();
-        verify(TextViewMocked, times(1)).setText(anyString());
+        assertTrue(MyTestClass.getErrorText().contains("READ_EXTERNAL_STORAGE"));
+        assertTrue(MyTestClass.getErrorText().contains("error"));
     }
 
     @Test
-    void handlePermissionsAsNonRoot()
+    void handleAllPermissionsAsNonRoot()
     {
-        TextView TextViewMocked         = mock(TextView.class);
-        ShellExecute ShellExecuteMocked = mock(ShellExecute.class);
-        final String[] PERMISSIONS_LIST = {
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-        };
-        final int REQUEST_PERMISSIONS = 1;
-
         AppPermissions MyTestClass = createClass();
+        grantBasePermissions(true, false);
         when(MainConfigurationMocked.isDeviceRooted()).thenReturn(false);
-        when(ShellExecuteMocked.executeAsRoot(anyString())).thenReturn(false);
 
-        MyTestClass.handleBasePermissions(TextViewMocked, ShellExecuteMocked);
+        MyTestClass.handleAllPermissions();
 
         verify(ShellExecuteMocked, never()).executeAsRoot(anyString());
-        verify(MainActivityMocked, times(1)).requestPermissions(PERMISSIONS_LIST, REQUEST_PERMISSIONS);
+        verify(ActivityMocked, times(1)).requestPermissions(BASE_PERMISSIONS_LIST, REQUEST_PERMISSIONS);
     }
-
 
     @Test
-    void verifyOverlayPermissions()
+    void handleAllPermissionsAlreadyGranted()
     {
-// Settings not really mockable
-        /*        Intent IntentMocked = mock(Intent.class);
-
-        try (MockedStatic<Settings> SettingsMocked = Mockito.mockStatic(Settings.class))
-        {
-            SettingsMocked.when(SettingsMocked.canDrawOverlays(MainActivityMocked)).thenReturn(false);
-        }
         AppPermissions MyTestClass = createClass();
-        when(MainConfigurationMocked.isDeviceRooted()).thenReturn(true);
+        grantBasePermissions(true, true);
 
-        assertFalse(MyTestClass.verifyOverlayPermissions(IntentMocked));
+        MyTestClass.handleAllPermissions();
 
-        verify(MainActivityMocked, times(1)).startActivityForResult(IntentMocked, 12);
-*/
+        verify(ShellExecuteMocked, never()).executeAsRoot(anyString());
+        verify(ActivityMocked, never()).requestPermissions(any(String[].class), any(Integer.class));
     }
 
+    @Test
+    void grantPlayerPermissionsNotRooted()
+    {
+        AppPermissions MyTestClass = createClass();
+        when(MainConfigurationMocked.isDeviceRooted()).thenReturn(false);
+
+        assertFalse(MyTestClass.grantPlayerPermissions());
+        verify(ShellExecuteMocked, never()).executeAsRoot(anyString());
+    }
+
+    @Test
+    void grantPlayerPermissionsRooted()
+    {
+        AppPermissions MyTestClass = createClass();
+        when(MainConfigurationMocked.isDeviceRooted()).thenReturn(true);
+        when(ShellExecuteMocked.executeAsRoot(anyString())).thenReturn(true);
+
+        assertTrue(MyTestClass.grantPlayerPermissions());
+        verify(ShellExecuteMocked, times(1)).executeAsRoot("pm grant " + DeviceOwner.PLAYER_PACKAGE_NAME + " android.permission.READ_EXTERNAL_STORAGE");
+        verify(ShellExecuteMocked, times(1)).executeAsRoot("pm grant " + DeviceOwner.PLAYER_PACKAGE_NAME + " android.permission.WRITE_EXTERNAL_STORAGE");
+    }
+
+    @Test
+    void grantPlayerPermissionsRootedFails()
+    {
+        AppPermissions MyTestClass = createClass();
+        when(MainConfigurationMocked.isDeviceRooted()).thenReturn(true);
+        when(ShellExecuteMocked.executeAsRoot(anyString())).thenReturn(false);
+
+        try (MockedStatic<Log> ignored = mockStatic(Log.class))
+        {
+            assertFalse(MyTestClass.grantPlayerPermissions());
+        }
+        verify(ShellExecuteMocked, times(1)).executeAsRoot(anyString());
+    }
+
+    void grantBasePermissions(boolean write, boolean read)
+    {
+        when(ActivityMocked.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE))
+                .thenReturn(write ? PackageManager.PERMISSION_GRANTED : PackageManager.PERMISSION_DENIED);
+        when(ActivityMocked.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE))
+                .thenReturn(read ? PackageManager.PERMISSION_GRANTED : PackageManager.PERMISSION_DENIED);
+    }
 
     AppPermissions createClass()
     {
         MainConfigurationMocked = mock(MainConfiguration.class);
-        MainActivityMocked      = mock(Activity.class);
+        ActivityMocked          = mock(Activity.class);
+        ShellExecuteMocked      = mock(ShellExecute.class);
 
-        return new AppPermissions(MainActivityMocked, MainConfigurationMocked);
+        return new AppPermissions(ActivityMocked, MainConfigurationMocked, ShellExecuteMocked);
     }
 
 }

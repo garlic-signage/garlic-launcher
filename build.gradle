@@ -51,6 +51,11 @@ android {
     buildFeatures {
         buildConfig = true
     }
+    testOptions {
+        unitTests.all {
+            useJUnitPlatform()
+        }
+    }
     buildTypes {
         release {
             if (project.rootProject.file('keystore.properties').exists()) {

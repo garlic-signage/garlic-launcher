@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 class CleanUpTest
 {
@@ -70,7 +71,7 @@ class CleanUpTest
         File dir1 = createDirectory("garlic-player.apk.uiuiui");
         File dir2 = createDirectory("dir dir dir");
 
-        CleanUp MyTestClass = new CleanUp(CLEANUP_TEST_PATH);
+        CleanUp MyTestClass = new CleanUp(CLEANUP_TEST_PATH, mock(DiscSpace.class));
 
         MyTestClass.removePlayerApks();
 
@@ -97,7 +98,7 @@ class CleanUpTest
         File dir1 = createDirectory("config_dir.xml");
         File dir2 = createDirectory("adirdirdir");
 
-        CleanUp MyTestClass = new CleanUp(CLEANUP_TEST_PATH);
+        CleanUp MyTestClass = new CleanUp(CLEANUP_TEST_PATH, mock(DiscSpace.class));
 
         MyTestClass.removeXMLFiles();
 
@@ -115,7 +116,7 @@ class CleanUpTest
     void removeFromNotExistingDirectory() throws IOException
     {
         File xml1 = createFile("garlic-player.xml");
-        CleanUp MyTestClass = new CleanUp("this directory not exists");
+        CleanUp MyTestClass = new CleanUp("this directory not exists", mock(DiscSpace.class));
         MyTestClass.removeXMLFiles();
         assertTrue(xml1.exists());
     }
