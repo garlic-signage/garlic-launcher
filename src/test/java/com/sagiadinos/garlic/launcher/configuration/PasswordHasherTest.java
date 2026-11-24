@@ -35,12 +35,32 @@ class PasswordHasherTest
 
     }
 
+    /**
+     * Hashes stored by older launchers must still verify.
+     */
     @Test
-    void hashClearTextWithSalt()
+    void hashClearTextWithSaltLegacyIterations()
     {
         PasswordHasher MyClass = new PasswordHasher();
-        String result = MyClass.hashClearTextWithSalt("Abracadabra", "Salem Aleikum");
+        String result = MyClass.hashClearTextWithSalt("Abracadabra", "Salem Aleikum", PasswordHasher.LEGACY_ITERATIONS);
 
         assertEquals("26d724ca38d9ef9b2e3ac16c96c781a987b93d33", result);
+    }
+
+    @Test
+    void hashClearTextWithSaltCurrentIterations()
+    {
+        PasswordHasher MyClass = new PasswordHasher();
+        String result = MyClass.hashClearTextWithSalt("Abracadabra", "Salem Aleikum", PasswordHasher.ITERATIONS);
+
+        assertNotEquals("26d724ca38d9ef9b2e3ac16c96c781a987b93d33", result);
+        assertEquals(result, MyClass.hashClearTextWithSalt("Abracadabra", "Salem Aleikum", PasswordHasher.ITERATIONS));
+    }
+
+    @Test
+    void iterationsAreRaised()
+    {
+        assertEquals(1000, PasswordHasher.LEGACY_ITERATIONS);
+        assertTrue(PasswordHasher.ITERATIONS >= 100000);
     }
 }

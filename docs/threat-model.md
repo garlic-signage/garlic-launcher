@@ -49,12 +49,15 @@ remotely through garlic-player and the CMS.
 - **Player not running**: a watchdog brings the player back to the foreground,
   the launcher starts it after boot.
 - **Service password at rest**: stored as PBKDF2 hash with a random salt, never
-  in plain text.
+  in plain text. Hashes of older launcher versions (1000 iterations) are
+  replaced on the first valid login.
 - **Installation of foreign apps**: every installation runs through
   `InstallAppReceiver`, whether the APK comes from the player, the automatic
   download of garlic-player (HTTPS from `garlic-player.com`) or a USB stick.
-  The APK is installed only when it is signed with exactly the certificate of
-  the launcher. Launcher and player share the signing key, so updates of both
+  The APK is first copied into the private cache of the launcher; only this
+  copy is checked and installed, so the sender cannot replace the file in
+  between. It is installed only when it is signed with exactly the certificate
+  of the launcher. Launcher and player share the signing key, so updates of both
   are accepted and every other APK is rejected. Android additionally verifies
   updates against the certificate of the installed version and refuses
   downgrades.
@@ -111,12 +114,9 @@ installed and configured by the operator and is fully trusted.
 
 - Exported components without permission, see 4.1.
 - No authentication for the USB configuration, see 4.2.
-- The service password hash uses PBKDF2 with HMAC-SHA1 and 1000 iterations,
-  below current recommendations. The provider allows unlimited password tests
-  by local apps.
-- `InstallAppReceiver` reads the APK file again after the certificate check.
-  An app that sends the path of a file it controls could replace the file in
-  between. This needs an installed app, see 4.1.
+- The service password hash uses PBKDF2 with HMAC-SHA1 (HMAC-SHA256 needs
+  Android 8) and 100,000 iterations. The provider allows unlimited password
+  tests by local apps, see 4.1.
 - On rooted devices commands run through `su`; root weakens every property of
   the platform and is not recommended.
 

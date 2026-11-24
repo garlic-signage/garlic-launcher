@@ -23,6 +23,8 @@ import android.annotation.SuppressLint;
 
 import com.sagiadinos.garlic.launcher.helper.RootChecker;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Set;
 import java.util.UUID;
 
@@ -117,7 +119,7 @@ public class MainConfiguration
 
     public int getBrightness()
     {
-        return Model.getInt("volume", 100);
+        return Model.getInt("brightness", 100);
     }
 
     public boolean hasNoPlayerStartDelayAfterBoot()
@@ -180,16 +182,31 @@ public class MainConfiguration
         String salt                = MyPasswordHasher.generateSalt();
         Model.storeString("service_password_salt", salt);
 
-        String hashed              = MyPasswordHasher.hashClearTextWithSalt(cleartext__password, salt);
+        String hashed              = MyPasswordHasher.hashClearTextWithSalt(cleartext__password, salt, PasswordHasher.ITERATIONS);
         Model.storeString("service_password_hash", hashed);
+        Model.storeInt("service_password_iterations", PasswordHasher.ITERATIONS);
     }
 
     public boolean compareServicePassword(String cleartext__password, PasswordHasher MyPasswordHasher)
     {
         String salt                = Model.getString("service_password_salt");
-        String hashed              = MyPasswordHasher.hashClearTextWithSalt(cleartext__password, salt);
+        String stored_hash         = Model.getString("service_password_hash");
+        if (cleartext__password == null || salt == null || stored_hash == null)
+            return false;
 
-        return (hashed.equals(Model.getString("service_password_hash")));
+        // hashes from before the iterations were stored have the legacy count
+        int iterations             = Model.getInt("service_password_iterations", PasswordHasher.LEGACY_ITERATIONS);
+        String hashed              = MyPasswordHasher.hashClearTextWithSalt(cleartext__password, salt, iterations);
+        if (hashed == null)
+            return false;
+
+        boolean is_valid = MessageDigest.isEqual(hashed.getBytes(StandardCharsets.UTF_8), stored_hash.getBytes(StandardCharsets.UTF_8));
+        if (is_valid && iterations < PasswordHasher.ITERATIONS)
+        {
+            // the cleartext is known only now, so an old hash is replaced on the first valid login
+            setServicePassword(cleartext__password, MyPasswordHasher);
+        }
+        return is_valid;
     }
 
     public boolean isDeviceRooted()

@@ -27,6 +27,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -163,6 +164,36 @@ class SettingsProviderTest
         new MainConfiguration(new SharedPreferencesModel(ContextMocked)).setServicePassword("secret", new PasswordHasher());
 
         assertQueryResult("service_password", "wrong", "invalid");
+    }
+
+    /**
+     * A password set by an older launcher (1000 iterations, no stored count)
+     * stays valid and is rehashed with the current iterations.
+     */
+    @Test
+    void queryServicePasswordMigratesLegacyHash()
+    {
+        String legacy_hash = new PasswordHasher().hashClearTextWithSalt("secret", "old salt", PasswordHasher.LEGACY_ITERATIONS);
+        Prefs.edit().putString("service_password_salt", "old salt")
+                    .putString("service_password_hash", legacy_hash).commit();
+
+        assertQueryResult("service_password", "secret", "valid");
+
+        assertEquals(PasswordHasher.ITERATIONS, Prefs.getInt("service_password_iterations", -1));
+        assertNotEquals(legacy_hash, Prefs.getString("service_password_hash", null));
+
+        cursorColumns.clear();
+        cursorValues.clear();
+        assertQueryResult("service_password", "secret", "valid");
+        cursorColumns.clear();
+        cursorValues.clear();
+        assertQueryResult("service_password", "wrong", "invalid");
+    }
+
+    @Test
+    void queryServicePasswordNotSetIsInvalid()
+    {
+        assertQueryResult("service_password", "anything", "invalid");
     }
 
     @Test

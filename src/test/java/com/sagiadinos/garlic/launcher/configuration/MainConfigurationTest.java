@@ -26,6 +26,7 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 
 
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -249,7 +250,7 @@ class MainConfigurationTest
         String hashed_password    = "heidewitzkaderkapitän";
 
         when(PasswordHasherMock.generateSalt()).thenReturn(salt);
-        when(PasswordHasherMock.hashClearTextWithSalt(cleartext_password, salt)).thenReturn(hashed_password);
+        when(PasswordHasherMock.hashClearTextWithSalt(cleartext_password, salt, PasswordHasher.ITERATIONS)).thenReturn(hashed_password);
 
         InOrder order = inOrder(SharedPreferencesModelMocked);
 
@@ -257,6 +258,7 @@ class MainConfigurationTest
 
         order.verify(SharedPreferencesModelMocked, times(1)).storeString("service_password_salt", salt);
         order.verify(SharedPreferencesModelMocked, times(1)).storeString("service_password_hash", hashed_password);
+        order.verify(SharedPreferencesModelMocked, times(1)).storeInt("service_password_iterations", PasswordHasher.ITERATIONS);
     }
 
     @Test
@@ -270,16 +272,13 @@ class MainConfigurationTest
         String cleartext_password = "a secret password";
         String hashed_password    = "heidewitzkaderkapitän";
 
-        when(SharedPreferencesModelMocked.getString("service_password_salt")).thenReturn(salt);
-        when(PasswordHasherMock.hashClearTextWithSalt(cleartext_password, salt)).thenReturn(hashed_password);
-        when(SharedPreferencesModelMocked.getString("service_password_hash")).thenReturn(hashed_password);
-
-        InOrder order = inOrder(SharedPreferencesModelMocked);
+        mockStoredPassword(salt, hashed_password, PasswordHasher.ITERATIONS);
+        when(PasswordHasherMock.hashClearTextWithSalt(cleartext_password, salt, PasswordHasher.ITERATIONS)).thenReturn(hashed_password);
 
         assertTrue(MyMainConfiguration.compareServicePassword(cleartext_password, PasswordHasherMock));
 
-        order.verify(SharedPreferencesModelMocked, times(1)).getString("service_password_salt");
-        order.verify(SharedPreferencesModelMocked, times(1)).getString("service_password_hash");
+        // current hash: nothing is rewritten
+        verify(SharedPreferencesModelMocked, never()).storeString(anyString(), anyString());
     }
 
     @Test
@@ -292,13 +291,106 @@ class MainConfigurationTest
         String salt               = "a crazy salt";
         String cleartext_password = "a secret password";
 
-        when(SharedPreferencesModelMocked.getString("service_password_salt")).thenReturn(salt);
-        when(PasswordHasherMock.hashClearTextWithSalt(cleartext_password, salt)).thenReturn("another hash");
-        when(SharedPreferencesModelMocked.getString("service_password_hash")).thenReturn("differt hash");
+        mockStoredPassword(salt, "differt hash", PasswordHasher.ITERATIONS);
+        when(PasswordHasherMock.hashClearTextWithSalt(cleartext_password, salt, PasswordHasher.ITERATIONS)).thenReturn("another hash");
 
         assertFalse(MyMainConfiguration.compareServicePassword(cleartext_password, PasswordHasherMock));
     }
 
+    @Test
+    void compareServicePasswordWithLegacyHashRehashes()
+    {
+        MainConfiguration MyMainConfiguration = createClass();
+
+        PasswordHasher PasswordHasherMock = mock(PasswordHasher.class);
+
+        String old_salt           = "old salt";
+        String new_salt           = "new salt";
+        String cleartext_password = "a secret password";
+
+        // hashes of launcher versions before the iterations were stored
+        when(SharedPreferencesModelMocked.getString("service_password_salt")).thenReturn(old_salt);
+        when(SharedPreferencesModelMocked.getString("service_password_hash")).thenReturn("legacy hash");
+        when(SharedPreferencesModelMocked.getInt("service_password_iterations", PasswordHasher.LEGACY_ITERATIONS))
+                .thenReturn(PasswordHasher.LEGACY_ITERATIONS);
+        when(PasswordHasherMock.hashClearTextWithSalt(cleartext_password, old_salt, PasswordHasher.LEGACY_ITERATIONS)).thenReturn("legacy hash");
+        when(PasswordHasherMock.generateSalt()).thenReturn(new_salt);
+        when(PasswordHasherMock.hashClearTextWithSalt(cleartext_password, new_salt, PasswordHasher.ITERATIONS)).thenReturn("new hash");
+
+        assertTrue(MyMainConfiguration.compareServicePassword(cleartext_password, PasswordHasherMock));
+
+        verify(SharedPreferencesModelMocked, times(1)).storeString("service_password_salt", new_salt);
+        verify(SharedPreferencesModelMocked, times(1)).storeString("service_password_hash", "new hash");
+        verify(SharedPreferencesModelMocked, times(1)).storeInt("service_password_iterations", PasswordHasher.ITERATIONS);
+    }
+
+    @Test
+    void compareServicePasswordWithLegacyHashFailsWithoutRehash()
+    {
+        MainConfiguration MyMainConfiguration = createClass();
+
+        PasswordHasher PasswordHasherMock = mock(PasswordHasher.class);
+
+        mockStoredPassword("old salt", "legacy hash", PasswordHasher.LEGACY_ITERATIONS);
+        when(PasswordHasherMock.hashClearTextWithSalt("wrong", "old salt", PasswordHasher.LEGACY_ITERATIONS)).thenReturn("other hash");
+
+        assertFalse(MyMainConfiguration.compareServicePassword("wrong", PasswordHasherMock));
+
+        verify(SharedPreferencesModelMocked, never()).storeString(anyString(), anyString());
+    }
+
+    @Test
+    void compareServicePasswordWithoutStoredPasswordFails()
+    {
+        MainConfiguration MyMainConfiguration = createClass();
+
+        PasswordHasher PasswordHasherMock = mock(PasswordHasher.class);
+
+        when(SharedPreferencesModelMocked.getString("service_password_salt")).thenReturn(null);
+        when(SharedPreferencesModelMocked.getString("service_password_hash")).thenReturn(null);
+
+        assertFalse(MyMainConfiguration.compareServicePassword("anything", PasswordHasherMock));
+        verify(PasswordHasherMock, never()).hashClearTextWithSalt(anyString(), anyString(), anyInt());
+    }
+
+    @Test
+    void compareServicePasswordWithNullCleartextFails()
+    {
+        MainConfiguration MyMainConfiguration = createClass();
+
+        PasswordHasher PasswordHasherMock = mock(PasswordHasher.class);
+
+        mockStoredPassword("salt", "hash", PasswordHasher.ITERATIONS);
+
+        assertFalse(MyMainConfiguration.compareServicePassword(null, PasswordHasherMock));
+    }
+
+    private void mockStoredPassword(String salt, String hash, int iterations)
+    {
+        when(SharedPreferencesModelMocked.getString("service_password_salt")).thenReturn(salt);
+        when(SharedPreferencesModelMocked.getString("service_password_hash")).thenReturn(hash);
+        when(SharedPreferencesModelMocked.getInt("service_password_iterations", PasswordHasher.LEGACY_ITERATIONS)).thenReturn(iterations);
+    }
+
+
+    @Test
+    void getVolume()
+    {
+        MainConfiguration MyMainConfiguration = createClass();
+        when(SharedPreferencesModelMocked.getInt("volume", 100)).thenReturn(30);
+
+        assertEquals(30, MyMainConfiguration.getVolume());
+    }
+
+    @Test
+    void getBrightnessReadsBrightnessNotVolume()
+    {
+        MainConfiguration MyMainConfiguration = createClass();
+        when(SharedPreferencesModelMocked.getInt("volume", 100)).thenReturn(30);
+        when(SharedPreferencesModelMocked.getInt("brightness", 100)).thenReturn(70);
+
+        assertEquals(70, MyMainConfiguration.getBrightness());
+    }
 
     @Test
     void isDeviceRooted()

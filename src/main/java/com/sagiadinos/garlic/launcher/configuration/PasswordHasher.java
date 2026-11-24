@@ -11,6 +11,14 @@ import javax.crypto.spec.PBEKeySpec;
 
 public class PasswordHasher
 {
+    /**
+     * PBKDF2WithHmacSHA256 exists only from Android 8, the launcher runs from 7.1.1.
+     * So it stays HMAC-SHA1 with more iterations.
+     */
+    public static final int ITERATIONS        = 100000;
+
+    /** hashes stored before the iterations were saved alongside */
+    public static final int LEGACY_ITERATIONS = 1000;
 
     public String generateSalt()
     {
@@ -21,11 +29,11 @@ public class PasswordHasher
         return Arrays.toString(salt);
     }
 
-    public String hashClearTextWithSalt(String clear_text, String salt)
+    public String hashClearTextWithSalt(String clear_text, String salt, int iterations)
     {
         try
         {
-            PBEKeySpec spec      = new PBEKeySpec(clear_text.toCharArray(), salt.getBytes(),1000,160);
+            PBEKeySpec spec      = new PBEKeySpec(clear_text.toCharArray(), salt.getBytes(), iterations, 160);
             SecretKeyFactory key = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
             byte[] hashed        = key.generateSecret(spec).getEncoded();
             return String.format("%x", new BigInteger(hashed));

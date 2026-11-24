@@ -25,7 +25,11 @@ import android.content.Intent;
 import android.util.Log;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 import com.sagiadinos.garlic.launcher.configuration.MainConfiguration;
 import com.sagiadinos.garlic.launcher.configuration.SharedPreferencesModel;
@@ -46,7 +50,9 @@ import com.sagiadinos.garlic.launcher.helper.TaskExecutionReport;
  */
 public class InstallAppReceiver extends BroadcastReceiver
 {
-    private static final String TAG = "InstallAppReceiver";
+    private static final String TAG          = "InstallAppReceiver";
+    private static final String INSTALL_DIR  = "install";
+    private static final String INSTALL_FILE = "install.apk";
     MainConfiguration MyMainConfiguration;
     @Override
     public void onReceive(Context ctx, Intent intent)
@@ -75,11 +81,29 @@ public class InstallAppReceiver extends BroadcastReceiver
             return;
         }
 
+        // The sender controls file_path and could replace the file between the
+        // signature check and the installation. So check and install a private copy.
+        File private_copy = new File(new File(ctx.getCacheDir(), INSTALL_DIR), INSTALL_FILE);
+        try
+        {
+            copyToPrivateDir(new File(file_path), private_copy);
+        }
+        catch (IOException e)
+        {
+            Log.w(TAG, "Could not copy " + file_path + ": " + e.getMessage());
+            TaskExecutionReport.append(task_id, "aborted");
+            deleteFile(private_copy);
+            deleteFromPlayerCache(file_path);
+            return;
+        }
+        String install_path = private_copy.getAbsolutePath();
+
         SignatureVerifier MyVerifier = new SignatureVerifier(ctx.getPackageManager(), ctx.getPackageName());
-        if (!MyVerifier.isSignedLikeReference(file_path))
+        if (!MyVerifier.isSignedLikeReference(install_path))
         {
             Log.w(TAG, "Rejected installation of " + file_path + ": signature does not match the launcher");
             TaskExecutionReport.append(task_id, "aborted");
+            deleteFile(private_copy);
             deleteFromPlayerCache(file_path);
             return;
         }
@@ -88,7 +112,7 @@ public class InstallAppReceiver extends BroadcastReceiver
         {
             if (MyMainConfiguration.isDeviceRooted())
             {
-                if (MyInstaller.installViaRootedShell(new ShellExecute(Runtime.getRuntime()), file_path))
+                if (MyInstaller.installViaRootedShell(new ShellExecute(Runtime.getRuntime()), install_path))
                 {
                     TaskExecutionReport.append(task_id, "completed");
                 }
@@ -99,7 +123,8 @@ public class InstallAppReceiver extends BroadcastReceiver
             }
             else
             {
-                MyInstaller.installPackage(task_id, file_path);
+                // reads the copy completely into the installer session before it returns
+                MyInstaller.installPackage(task_id, install_path);
             }
         }
         catch (IOException e)
@@ -107,7 +132,32 @@ public class InstallAppReceiver extends BroadcastReceiver
             TaskExecutionReport.append(task_id, "aborted");
         }
 
+        deleteFile(private_copy);
         deleteFromPlayerCache(file_path);
+    }
+
+    private void copyToPrivateDir(File source, File destination) throws IOException
+    {
+        File dir = destination.getParentFile();
+        if (dir != null && !dir.isDirectory() && !dir.mkdirs())
+            throw new IOException(dir.getAbsolutePath() + " could not be created");
+
+        try (InputStream in = new FileInputStream(source);
+             OutputStream out = new FileOutputStream(destination, false))
+        {
+            byte[] buffer = new byte[16384];
+            int len;
+            while ((len = in.read(buffer)) != -1)
+            {
+                out.write(buffer, 0, len);
+            }
+        }
+    }
+
+    private void deleteFile(File file)
+    {
+        //noinspection ResultOfMethodCallIgnored
+        file.delete();
     }
 
     /**
