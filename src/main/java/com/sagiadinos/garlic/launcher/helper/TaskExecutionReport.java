@@ -33,9 +33,9 @@ public class TaskExecutionReport
     {
         try
         {
-            String text = "<task id=\""+task_id+"\">" +
+            String text = "<task id=\""+escapeXml(task_id)+"\">" +
                 "<lastUpdateTime>"+getCurrentIsoDateTime()+"</lastUpdateTime>" +
-                "<state>"+state+"</state></task>";
+                "<state>"+escapeXml(state)+"</state></task>";
 
             // this can happens when Launcher is updated and class is not constructed
             // then we get a crash
@@ -51,6 +51,54 @@ public class TaskExecutionReport
         {
             Log.wtf("TaskExecutionReport", e.getMessage());
         }
+    }
+
+    /**
+     * task_id comes from outside (player, broadcast) and must not break
+     * the XML. Characters not allowed in XML 1.0 are dropped, line breaks
+     * are encoded so that every task stays on one line.
+     */
+    static String escapeXml(String value)
+    {
+        if (value == null)
+            return "";
+
+        StringBuilder escaped = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++)
+        {
+            char c = value.charAt(i);
+            switch (c)
+            {
+                case '&':  escaped.append("&amp;");  break;
+                case '<':  escaped.append("&lt;");   break;
+                case '>':  escaped.append("&gt;");   break;
+                case '"':  escaped.append("&quot;"); break;
+                case '\'': escaped.append("&apos;"); break;
+                case '\t': escaped.append("&#9;");   break;
+                case '\n': escaped.append("&#10;");  break;
+                case '\r': escaped.append("&#13;");  break;
+                default:
+                    if (isAllowedXmlChar(value, i))
+                        escaped.append(c);
+                    break;
+            }
+        }
+        return escaped.toString();
+    }
+
+    private static boolean isAllowedXmlChar(String value, int i)
+    {
+        char c = value.charAt(i);
+        if (c < 0x20 || c == 0xFFFE || c == 0xFFFF)
+            return false;
+
+        // keep only complete surrogate pairs
+        if (Character.isHighSurrogate(c))
+            return i + 1 < value.length() && Character.isLowSurrogate(value.charAt(i + 1));
+        if (Character.isLowSurrogate(c))
+            return i > 0 && Character.isHighSurrogate(value.charAt(i - 1));
+
+        return true;
     }
 
     private static String getCurrentIsoDateTime()

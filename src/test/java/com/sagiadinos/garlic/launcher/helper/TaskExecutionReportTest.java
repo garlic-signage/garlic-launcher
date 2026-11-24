@@ -71,4 +71,51 @@ class TaskExecutionReportTest
             //You'll need to add proper error handling here
         }
     }
+
+    @Test
+    void appendEscapesTaskId() throws IOException
+    {
+        new TaskExecutionReport("./here");
+        TaskExecutionReport.append("a\"><evil/><task id=\"b", "completed");
+
+        BufferedReader br = new BufferedReader(new FileReader("./here/task_execution_log.xml"));
+        String line = br.readLine();
+        assertNull(br.readLine());
+        br.close();
+
+        assertTrue(line.startsWith("<task id=\"a&quot;&gt;&lt;evil/&gt;&lt;task id=&quot;b\">"));
+        assertTrue(line.endsWith("<state>completed</state></task>"));
+    }
+
+    @Test
+    void escapeXmlSpecialCharacters()
+    {
+        assertEquals("&amp;&lt;&gt;&quot;&apos;", TaskExecutionReport.escapeXml("&<>\"'"));
+    }
+
+    @Test
+    void escapeXmlLineBreaks()
+    {
+        assertEquals("a&#10;b&#13;c&#9;d", TaskExecutionReport.escapeXml("a\nb\rc\td"));
+    }
+
+    @Test
+    void escapeXmlDropsInvalidCharacters()
+    {
+        assertEquals("ab", TaskExecutionReport.escapeXml("a\u0000\u0001\uFFFEb"));
+        assertEquals("ab", TaskExecutionReport.escapeXml("a\uD800b"));   // lone high surrogate
+        assertEquals("ab", TaskExecutionReport.escapeXml("a\uDC00b"));   // lone low surrogate
+    }
+
+    @Test
+    void escapeXmlKeepsValidCharacters()
+    {
+        assertEquals("via usb äöü € \uD83D\uDE00", TaskExecutionReport.escapeXml("via usb äöü € \uD83D\uDE00"));
+    }
+
+    @Test
+    void escapeXmlNull()
+    {
+        assertEquals("", TaskExecutionReport.escapeXml(null));
+    }
 }
