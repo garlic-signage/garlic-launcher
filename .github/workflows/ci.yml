@@ -1,0 +1,83 @@
+# Unit tests with line coverage (JaCoCo). On master the coverage badge is committed to the branch "badges"
+# (an SVG made here, no external service); the README shows it from there.
+# The release builds run on the own runner.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # the badge goes to the branch "badges"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # accepts the licenses, so the Android Gradle Plugin can fetch the platform of compileSdk
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Test
+        run: ./gradlew testGarlicLauncherDebugUnitTest
+
+      - name: Coverage
+        run: |
+          ./gradlew createGarlicLauncherDebugUnitTestCoverageReport
+          mkdir -p coverage
+          cp -r build/reports/coverage/test/GarlicLauncher/debug/. coverage/
+          python3 .github/scripts/coverage_badge.py coverage/report.xml coverage/coverage.svg
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: build/reports/tests/
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+
+      - name: Commit badge to the branch badges
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          badges=$(mktemp -d)
+          cd "$badges"
+          git init -q -b badges
+          git remote add origin "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          # the first run creates the branch without history; later ones continue it
+          if git fetch -q --depth 1 origin badges; then git checkout -q -B badges FETCH_HEAD; fi
+          cp "$GITHUB_WORKSPACE/coverage/coverage.svg" .
+          git add coverage.svg
+          if git diff --cached --quiet; then echo "badge unchanged"; exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "coverage badge for ${GITHUB_SHA::7}"
+          git push -q origin badges

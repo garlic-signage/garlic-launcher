@@ -63,7 +63,7 @@ android {
             }
         }
         debug {
-            testCoverageEnabled = true
+            enableUnitTestCoverage = true
         }
     }
 
