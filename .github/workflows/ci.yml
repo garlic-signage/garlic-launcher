@@ -34,9 +34,12 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # accepts the licenses, so the Android Gradle Plugin can fetch the platform of compileSdk
+      # accepts the licenses and installs the platform of compileSdk; without "packages" the action wants the
+      # removed package "tools" and fails
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-37.1'
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
