@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -89,6 +90,75 @@ class ShellExecuteTest
 
         String result = MyTestClass.getOutputText();
         assertEquals( s +"\n", result);
+    }
+
+    @Test
+    void writesCommandAndExitToShell() throws IOException, InterruptedException
+    {
+        ShellExecute MyTestClass = createClass();
+        ByteArrayOutputStream stdin = new ByteArrayOutputStream();
+        when(RuntimeMocked.exec("su\n")).thenReturn(ProcessMocked);
+        stubProcessStreams();
+        when(ProcessMocked.getOutputStream()).thenReturn(stdin);
+        when(ProcessMocked.waitFor()).thenReturn(0);
+
+        assertTrue(MyTestClass.executeAsRoot("pm grant x y"));
+
+        assertEquals("pm grant x y\nexit\n", stdin.toString());
+    }
+
+    @Test
+    void textsWithoutProcess()
+    {
+        ShellExecute MyTestClass = createClass();
+
+        assertEquals("", MyTestClass.getErrorText());
+        assertEquals("No OutputText cause MyProcess is Null", MyTestClass.getOutputText());
+    }
+
+    @Test
+    void execFailureReturnsFalseWithErrorText() throws IOException
+    {
+        ShellExecute MyTestClass = createClass();
+        when(RuntimeMocked.exec("su\n")).thenThrow(new IOException("su not found"));
+
+        assertFalse(MyTestClass.executeAsRoot("anything"));
+        assertEquals("su not found", MyTestClass.getErrorText());
+    }
+
+    @Test
+    void interruptedReturnsFalse() throws IOException, InterruptedException
+    {
+        ShellExecute MyTestClass = createClass();
+        when(RuntimeMocked.exec("sh\n")).thenReturn(ProcessMocked);
+        stubProcessStreams();
+        when(ProcessMocked.waitFor()).thenThrow(new InterruptedException("stopped"));
+
+        assertFalse(MyTestClass.executeAsUser("anything"));
+        assertTrue(MyTestClass.getErrorText().startsWith("stopped"));
+    }
+
+    /**
+     * Current behaviour: execute() reads stdout and stderr itself, so
+     * getErrorText() and getOutputText() afterwards find the streams empty.
+     * The error of a failed command does not reach the log.
+     */
+    @Test
+    void streamsAreAlreadyConsumedAfterExecution() throws IOException, InterruptedException
+    {
+        ShellExecute MyTestClass = createClass();
+        when(RuntimeMocked.exec("su\n")).thenReturn(ProcessMocked);
+        when(ProcessMocked.getOutputStream()).thenReturn(new ByteArrayOutputStream());
+        InputStream stdout = new ByteArrayInputStream("some output".getBytes());
+        InputStream stderr = new ByteArrayInputStream("permission denied".getBytes());
+        when(ProcessMocked.getInputStream()).thenReturn(stdout);
+        when(ProcessMocked.getErrorStream()).thenReturn(stderr);
+        when(ProcessMocked.waitFor()).thenReturn(1);
+
+        assertFalse(MyTestClass.executeAsRoot("pm grant x y"));
+
+        assertEquals("\n", MyTestClass.getErrorText());
+        assertEquals("", MyTestClass.getOutputText());
     }
 
     ShellExecute createClassWithProcess() throws IOException, InterruptedException

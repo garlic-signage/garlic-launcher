@@ -14,6 +14,8 @@ import android.content.pm.PackageInfo;
 import android.os.Build;
 import android.os.Looper;
 import android.os.Process;
+import android.util.DisplayMetrics;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -63,6 +65,7 @@ public class MainActivityTest
     private static final String PLAYER_ACTIVITY        = PLAYER_PACKAGE + ".MainActivity";
     private static final String PLAYER_CLOSED_ACTION   = "com.sagiadinos.garlic.launcher.receiver.PlayerClosedReceiver";
     private static final String IN_FOREGROUND_ACTION   = "com.sagiadinos.garlic.launcher.receiver.InForegroundReceiver";
+    private static final String OTHER_LAUNCHER         = "com.android.launcher3";
 
     Application app;
     MainConfiguration MyMainConfiguration;
@@ -416,7 +419,202 @@ public class MainActivityTest
         assertEquals(android.provider.Settings.ACTION_SETTINGS, started.getAction());
     }
 
+    // ---------------------------------------------------------------- leaving the kiosk by touch
+
+    @Test
+    public void tenTouchesInCornerOpenOtherLauncher()
+    {
+        becomeDeviceOwner();
+        installOtherLauncher();
+        MainActivity activity = Robolectric.buildActivity(MainActivity.class).setup().get();
+        clearStartedActivities();
+
+        touchCorner(activity, 9);
+        assertNull(shadowOf(app).getNextStartedActivity());
+
+        touchCorner(activity, 1);
+
+        Intent started = shadowOf(app).getNextStartedActivity();
+        assertNotNull(started);
+        assertEquals(new ComponentName(OTHER_LAUNCHER, OTHER_LAUNCHER + ".Launcher"), started.getComponent());
+        assertTrue(started.hasCategory(Intent.CATEGORY_HOME));
+        assertFalse(activity.isPlayerPlaying());
+    }
+
+    @Test
+    public void touchesInStrictModeAreIgnored()
+    {
+        becomeDeviceOwner();
+        installOtherLauncher();
+        MyMainConfiguration.setStrictKioskMode(true);
+        MainActivity activity = Robolectric.buildActivity(MainActivity.class).setup().get();
+        clearStartedActivities();
+
+        touchCorner(activity, 20);
+
+        assertNull(shadowOf(app).getNextStartedActivity());
+    }
+
+    @Test
+    public void touchesWithoutDeviceOwnerAreIgnored()
+    {
+        installOtherLauncher();
+        MainActivity activity = Robolectric.buildActivity(MainActivity.class).setup().get();
+        clearStartedActivities();
+
+        touchCorner(activity, 20);
+
+        assertNull(shadowOf(app).getNextStartedActivity());
+    }
+
+    @Test
+    public void touchesInMiddleAreIgnored()
+    {
+        becomeDeviceOwner();
+        installOtherLauncher();
+        MainActivity activity = Robolectric.buildActivity(MainActivity.class).setup().get();
+        clearStartedActivities();
+
+        for (int i = 0; i < 20; i++)
+        {
+            activity.onTouchEvent(MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 1, 1, 0));
+        }
+
+        assertNull(shadowOf(app).getNextStartedActivity());
+    }
+
+    @Test
+    public void withoutOtherLauncherNothingIsStarted()
+    {
+        becomeDeviceOwner();
+        MainActivity activity = Robolectric.buildActivity(MainActivity.class).setup().get();
+        clearStartedActivities();
+
+        touchCorner(activity, 10);
+
+        assertNull(shadowOf(app).getNextStartedActivity());
+    }
+
+    // ---------------------------------------------------------------- more player start cases
+
+    @Test
+    public void emptyServicePasswordRestartsCountdown()
+    {
+        becomeDeviceOwner();
+        installPlayer();
+        MyMainConfiguration.storePlayerStartDelay(5);
+        MyMainConfiguration.toggleActiveServicePassword(true);
+        MyMainConfiguration.setServicePassword("secret", new PasswordHasher());
+        MainActivity activity = Robolectric.buildActivity(MainActivity.class).setup().get();
+
+        enterServicePassword(activity, "");
+        clearStartedActivities();
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(6));
+
+        assertTrue(activity.isPlayerPlaying());
+        assertPlayerStarted();
+    }
+
+    @Test
+    public void withoutContentUrlCountdownDoesNotStart()
+    {
+        becomeDeviceOwner();
+        MainActivity activity = Robolectric.buildActivity(MainActivity.class).setup().get();
+        MyMainConfiguration.storeSmilIndex(null);
+
+        activity.startGarlicPlayerDelayed();
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(60));
+
+        assertEquals(app.getString(R.string.play), text(activity, R.id.btStartPlayer));
+        assertFalse(activity.isPlayerPlaying());
+    }
+
+    @Test
+    public void playerWithoutLaunchActivityShowsHint()
+    {
+        becomeDeviceOwner();
+        installPlayerPackageOnly();
+        MainActivity activity = Robolectric.buildActivity(MainActivity.class).setup().get();
+
+        activity.startGarlicPlayerInstantly(null);
+
+        assertEquals(PLAYER_PACKAGE + " do not exist", text(activity, R.id.tvInformation));
+    }
+
+    @Test
+    public void rootedDeviceGrantsMissingPlayerPermissions()
+    {
+        ShadowRootChecker.setRooted(true);
+        ShadowShellExecute.setResult(true);
+        becomeDeviceOwner();
+        installPlayerPackageOnly();
+
+        Robolectric.buildActivity(MainActivity.class).setup();
+
+        assertTrue(ShadowShellExecute.getCommands().contains(
+                "pm grant " + PLAYER_PACKAGE + " android.permission.READ_EXTERNAL_STORAGE"));
+        assertTrue(ShadowShellExecute.getCommands().contains(
+                "pm grant " + PLAYER_PACKAGE + " android.permission.WRITE_EXTERNAL_STORAGE"));
+    }
+
+    @Test
+    public void setPlayerStatus()
+    {
+        MainActivity activity = Robolectric.buildActivity(MainActivity.class).setup().get();
+
+        activity.setPlayerStatus(MainActivity.PlayerState.PLAYING);
+        assertTrue(activity.isPlayerPlaying());
+
+        activity.setPlayerStatus(MainActivity.PlayerState.WAITING);
+        assertFalse(activity.isPlayerPlaying());
+    }
+
+    @Test
+    public void restartUpdatesServiceModeButton()
+    {
+        becomeDeviceOwner();
+        grantAllPermissions();
+        ActivityController<MainActivity> controller = Robolectric.buildActivity(MainActivity.class).setup();
+        assertEquals(View.GONE, controller.get().findViewById(R.id.btToggleServiceMode).getVisibility());
+
+        controller.pause().stop();
+        MyMainConfiguration.toggleActiveServicePassword(true);
+        controller.restart().start().resume();
+
+        assertEquals(View.VISIBLE, controller.get().findViewById(R.id.btToggleServiceMode).getVisibility());
+    }
+
     // ---------------------------------------------------------------- helpers
+
+    private void touchCorner(MainActivity activity, int count)
+    {
+        DisplayMetrics metrics = activity.getResources().getDisplayMetrics();
+        for (int i = 0; i < count; i++)
+        {
+            activity.onTouchEvent(MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN,
+                    metrics.widthPixels - 1, metrics.heightPixels - 1, 0));
+        }
+    }
+
+    private void installOtherLauncher()
+    {
+        ComponentName launcher = new ComponentName(OTHER_LAUNCHER, OTHER_LAUNCHER + ".Launcher");
+        shadowOf(app.getPackageManager()).addActivityIfNotPresent(launcher);
+        IntentFilter filter = new IntentFilter(Intent.ACTION_MAIN);
+        filter.addCategory(Intent.CATEGORY_HOME);
+        filter.addCategory(Intent.CATEGORY_DEFAULT);
+        shadowOf(app.getPackageManager()).addIntentFilterForActivity(launcher, filter);
+    }
+
+    private void installPlayerPackageOnly()
+    {
+        PackageInfo info                 = new PackageInfo();
+        info.packageName                 = PLAYER_PACKAGE;
+        info.applicationInfo             = new ApplicationInfo();
+        info.applicationInfo.packageName = PLAYER_PACKAGE;
+        shadowOf(app.getPackageManager()).installPackage(info);
+    }
+
 
     private void becomeDeviceOwner()
     {

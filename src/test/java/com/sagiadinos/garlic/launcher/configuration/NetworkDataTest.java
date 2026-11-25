@@ -172,4 +172,15 @@ class NetworkDataTest
         MyNetworkdata.setEthernetDNS(expected);
         assertEquals(expected,  MyNetworkdata.getEthernetDNS());
     }
+
+    @Test
+    void wifiDhcp()
+    {
+        NetworkData MyNetworkData = new NetworkData();
+        assertTrue(MyNetworkData.isWifiDHCP());
+
+        MyNetworkData.setWifiDHCP(false);
+
+        assertFalse(MyNetworkData.isWifiDHCP());
+    }
 }

@@ -6,7 +6,7 @@ import java.io.File;
 
 public class RootChecker
 {
-    private final String[] binaryPaths= {
+    private static final String[] BINARY_PATHS = {
             "/data/local/",
             "/data/local/bin/",
             "/data/local/xbin/",
@@ -24,13 +24,23 @@ public class RootChecker
             "/dev"
     };
 
+    private final String[] binaryPaths;
     private boolean is_rooted = false;
     private boolean is_checked = false;
 
     public RootChecker()
     {
-        is_rooted = false;
-        is_checked = false;
+        this(BINARY_PATHS);
+    }
+
+    /**
+     * For tests: other directories than the ones of the device.
+     */
+    RootChecker(String[] binary_paths)
+    {
+        binaryPaths = binary_paths;
+        is_rooted   = false;
+        is_checked  = false;
     }
 
     public boolean isDeviceRooted()

@@ -4,6 +4,10 @@ import android.content.Context;
 import android.content.SharedPreferences;
 
 import com.sagiadinos.garlic.launcher.helper.DeviceOwner;
+import com.sagiadinos.garlic.launcher.testutil.FakeSharedPreferences;
+
+import java.util.Arrays;
+import java.util.HashSet;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -137,6 +141,105 @@ class SharedPreferencesModelTest
         verify(SharedPreferencesMocked, times(1)).getBoolean("param2", false);
     }
 
+
+    @Test
+    void usesLauncherPreferences()
+    {
+        Context ContextMocked = mock(Context.class);
+        when(ContextMocked.getSharedPreferences(DeviceOwner.LAUNCHER_PACKAGE_NAME, Context.MODE_PRIVATE))
+                .thenReturn(new FakeSharedPreferences());
+
+        new SharedPreferencesModel(ContextMocked);
+
+        verify(ContextMocked, times(1)).getSharedPreferences("com.sagiadinos.garlic.launcher", Context.MODE_PRIVATE);
+    }
+
+    @Test
+    void removeParameter()
+    {
+        SharedPreferencesModel TestClass = createFakeClass();
+        TestClass.storeString("param", "value");
+
+        TestClass.removeParameter("param");
+
+        assertFalse(TestClass.hasParameter("param"));
+        assertNull(TestClass.getString("param"));
+    }
+
+    @Test
+    void getStringWithDefault()
+    {
+        SharedPreferencesModel TestClass = createFakeClass();
+
+        assertEquals("default", TestClass.getString("missing", "default"));
+        TestClass.storeString("param", "value");
+        assertEquals("value", TestClass.getString("param", "default"));
+    }
+
+    @Test
+    void getIntDefaults()
+    {
+        SharedPreferencesModel TestClass = createFakeClass();
+
+        assertEquals(0, TestClass.getInt("missing"));
+        assertEquals(42, TestClass.getInt("missing", 42));
+        TestClass.storeInt("param", 7);
+        assertEquals(7, TestClass.getInt("param"));
+        assertEquals(7, TestClass.getInt("param", 42));
+    }
+
+    @Test
+    void getBooleanWithDefault()
+    {
+        SharedPreferencesModel TestClass = createFakeClass();
+
+        assertTrue(TestClass.getBoolean("missing", true));
+        TestClass.storeBoolean("param", false);
+        assertFalse(TestClass.getBoolean("param", true));
+    }
+
+    @Test
+    void storeIntWithCatchedException()
+    {
+        SharedPreferencesModel TestClass = createClass();
+        when(SharedPreferencesMocked.edit()).thenReturn(EditorMock);
+        when(EditorMock.commit()).thenReturn(false);
+
+        TestClass.storeInt("param", 1);
+
+        assertEquals("commit of SharedPreferences failed", TestClass.getErrorText());
+    }
+
+    @Test
+    void stringSet()
+    {
+        SharedPreferencesModel TestClass = createFakeClass();
+        assertEquals(new HashSet<>(), TestClass.getStringSet("missing"));
+
+        TestClass.storeStringSet("days", new HashSet<>(Arrays.asList("monday", "friday")));
+
+        assertEquals(new HashSet<>(Arrays.asList("monday", "friday")), TestClass.getStringSet("days"));
+        assertEquals("", TestClass.getErrorText());
+    }
+
+    @Test
+    void storeStringSetWithCatchedException()
+    {
+        SharedPreferencesModel TestClass = createClass();
+        when(SharedPreferencesMocked.edit()).thenReturn(EditorMock);
+        when(EditorMock.commit()).thenReturn(false);
+
+        TestClass.storeStringSet("days", new HashSet<>());
+
+        assertEquals("commit of SharedPreferences failed", TestClass.getErrorText());
+    }
+
+    SharedPreferencesModel createFakeClass()
+    {
+        Context ContextMocked = mock(Context.class);
+        FakeSharedPreferences.attachTo(ContextMocked);
+        return new SharedPreferencesModel(ContextMocked);
+    }
 
     SharedPreferencesModel createClass()
     {

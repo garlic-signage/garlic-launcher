@@ -94,36 +94,8 @@ class UsbConnectionReceiverTest
         verify(IntentMocked, times(1)).getData();
     }
 
-/*
-    Fails because of a mockito update
-    @Test
-    void onReceiveIndexSmil()
-    {
-        UsbConnectionReceiver MyTestClass = createClassForDispatch();
-        File FileMock              = mock(File.class);
-        Intent BroadCastIntentMock = mock(Intent.class);
-        MainConfigurationMocked    = mock(MainConfiguration.class);
-        SharedPreferencesModel SharedPreferencesModelMocked = mock(SharedPreferencesModel.class);
+    // the SMIL directory is tested in UsbConnectionReceiverSmilTest
 
-        when(ContextMocked.getSharedPreferences(DeviceOwner.LAUNCHER_PACKAGE_NAME, Context.MODE_PRIVATE)).thenReturn(mock(SharedPreferences.class));
-        when(MyTestClass.createSharedPreferencesModel()).thenReturn(SharedPreferencesModelMocked);
-        when(MyTestClass.createMainConfiguration()).thenReturn(MainConfigurationMocked);
-
-        when(MyTestClass.createFile("//path/to/usb-mount/index.smil")).thenReturn(FileMock);
-        when(FileMock.exists()).thenReturn(true);
-        when(FileMock.canRead()).thenReturn(true);
-        when(FileMock.getAbsolutePath()).thenReturn("//path/to/usb-mount/index.smil");
-
-        when(MyTestClass.createIntent("com.sagiadinos.garlic.player.java.SmilIndexReceiver")).thenReturn(BroadCastIntentMock);
-
-        MyTestClass.onReceive(ContextMocked, IntentMocked);
-
-        verify(MainConfigurationMocked, times(1)).storeSmilIndex("//path/to/usb-mount/index.smil");
-        verify(FileMock, times(1)).getAbsolutePath();
-        verify(BroadCastIntentMock, times(1)).putExtra("smil_index_path", "//path/to/usb-mount/index.smil");
-        verify(ContextMocked, times(1)).sendBroadcast(BroadCastIntentMock);
-    }
-*/
     @Test
     void onReceiveConfigXML()
     {
