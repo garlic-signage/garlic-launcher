@@ -87,6 +87,21 @@ class ReceiverManagerTest
         }
     }
 
+    @Test
+    void secondUnregisterDoesNothing()
+    {
+        try (MockedConstruction<IntentFilter> ignored = mockFilters())
+        {
+            ReceiverManager MyTestClass = new ReceiverManager(MainActivityMocked);
+            MyTestClass.registerAllReceiver();
+
+            MyTestClass.unregisterAllReceiver();
+            MyTestClass.unregisterAllReceiver();
+
+            verify(MainActivityMocked, times(2)).unregisterReceiver(any());
+        }
+    }
+
     private MockedConstruction<IntentFilter> mockFilters()
     {
         return mockConstruction(IntentFilter.class,

@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
@@ -78,16 +77,22 @@ class ConfigXMLReceiverTest
         verifyNoInteractions(ContextMocked);
     }
 
-    /**
-     * Current behaviour: a missing config_path crashes the receiver.
-     */
     @Test
-    void onReceiveWithoutConfigPathThrows()
+    void onReceiveWithoutConfigPathReportsAborted()
     {
         Intent IntentMocked = createIntent(null, "t1");
 
-        ConfigXMLReceiver MyTestClass = new ConfigXMLReceiver();
-        assertThrows(NullPointerException.class, () -> MyTestClass.onReceive(ContextMocked, IntentMocked));
+        try (MockedStatic<TaskExecutionReport> report = mockStatic(TaskExecutionReport.class);
+             MockedStatic<Log> ignoredLog = mockStatic(Log.class);
+             MockedConstruction<ConfigXMLModel> model = mockConstruction(ConfigXMLModel.class);
+             MockedConstruction<Intent> ignoredIntents = mockIntents())
+        {
+            new ConfigXMLReceiver().onReceive(ContextMocked, IntentMocked);
+
+            report.verify(() -> TaskExecutionReport.append("t1", "aborted"), times(1));
+            assertEquals(0, model.constructed().size());
+            assertEquals(0, sentActions.size());
+        }
     }
 
     @Test

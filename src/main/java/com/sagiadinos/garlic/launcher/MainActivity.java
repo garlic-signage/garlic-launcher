@@ -223,8 +223,10 @@ public class MainActivity extends Activity
     @Override
     protected void onDestroy()
     {
-        // Attention: MyDeviceOwner and dependent classes like MyReceiverManager can be null when access rights are denied
-        if (MyDeviceOwner != null && MyDeviceOwner.isDeviceOwner() && AppPermissions.hasAllPermissions(this))
+        // MyReceiverManager is null when onCreate stopped early (no device owner).
+        // Not bound to hasAllPermissions(): from Android 8 it is false with targetSdk 25,
+        // and every recreate() would register the receivers once more.
+        if (MyReceiverManager != null)
         {
             MyReceiverManager.unregisterAllReceiver();
         }

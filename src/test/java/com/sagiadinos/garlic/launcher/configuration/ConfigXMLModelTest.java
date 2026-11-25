@@ -87,20 +87,38 @@ class ConfigXMLModelTest
 
 
     /**
-     * Current behaviour: the file is read in blocks of 10 chars and the last
-     * block is appended completely, so the result is filled up with '\0'.
-     * The parser stops there with an error, after all props were read.
+     * Only the chars of the file, no '\0' from a not full last block.
      * Parsing and storing are tested in ConfigXMLModelParseTest (Robolectric).
      */
     @Test
-    void readConfigXmlFillsUpLastBlockWithNullChars(@TempDir File tmp) throws IOException
+    void readConfigXmlReturnsExactContent(@TempDir File tmp) throws IOException
     {
         File config = new File(tmp, "config.xml");
         Files.write(config.toPath(), "<config/>abcd".getBytes(StandardCharsets.UTF_8));
 
-        String result = createModel().readConfigXml(config);
+        assertEquals("<config/>abcd", createModel().readConfigXml(config));
+    }
 
-        assertEquals("<config/>abcd\0\0\0\0\0\0\0", result);
+    @Test
+    void readConfigXmlLargerThanBuffer(@TempDir File tmp) throws IOException
+    {
+        StringBuilder content = new StringBuilder("<configuration><userPref>");
+        for (int i = 0; i < 200; i++)
+            content.append("<prop name=\"p").append(i).append("\" value=\"äöü ").append(i).append("\"/>\n");
+        content.append("</userPref></configuration>");
+        File config = new File(tmp, "config.xml");
+        Files.write(config.toPath(), content.toString().getBytes(StandardCharsets.UTF_8));
+
+        assertEquals(content.toString(), createModel().readConfigXml(config));
+    }
+
+    @Test
+    void readSampleFileHasNoNullChars() throws IOException
+    {
+        String result = createModel().readConfigXml(new File("sampledata/files/config_wlan_dhcp.xml"));
+
+        assertEquals(-1, result.indexOf('\0'));
+        assertTrue(result.trim().endsWith("</configuration>"));
     }
 
     @Test

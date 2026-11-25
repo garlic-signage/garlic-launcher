@@ -58,6 +58,9 @@ public class ReceiverManager
 
         MyMainActivity.unregisterReceiver(MyPlayerNotInForegroundReceiver);
         MyMainActivity.unregisterReceiver(MyPlayerClosedReceiver);
+        // a second call must not unregister again, Android would throw
+        MyPlayerNotInForegroundReceiver = null;
+        MyPlayerClosedReceiver          = null;
     }
 
     private IntentFilter createIntentFilter(String action_name)

@@ -39,12 +39,20 @@ public class ConfigXMLReceiver extends BroadcastReceiver
         MyMainConfiguration = new MainConfiguration(new SharedPreferencesModel(MyContext));
 
 
-        File config_xml = new File(Objects.requireNonNull(intent.getStringExtra("config_path")));
         String task_id = "";
         if (intent.getStringExtra("task_id") != null)
         {
             task_id        = intent.getStringExtra("task_id");
         }
+
+        String config_path = intent.getStringExtra("config_path");
+        if (config_path == null)
+        {
+            Log.w("ConfigXMLReceiver", "config_path missing");
+            TaskExecutionReport.append(task_id, "aborted");
+            return;
+        }
+        File config_xml = new File(config_path);
 
         if (parseConfigFile(config_xml))
         {

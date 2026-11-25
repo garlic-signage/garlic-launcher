@@ -92,9 +92,13 @@ public class GarlicLauncherApplication extends Application implements Applicatio
     @Override
     public void onActivityPaused(Activity activity)
     {
-        String class_name_activity = activity.getClass().getCanonicalName();
-        if (foreground_activity != null &&
-                Objects.equals(foreground_activity.get().getClass().getCanonicalName(), class_name_activity))
+        if (foreground_activity == null)
+            return;
+
+        // the activity may already be garbage collected
+        Context foreground = foreground_activity.get();
+        if (foreground == null ||
+                Objects.equals(foreground.getClass().getCanonicalName(), activity.getClass().getCanonicalName()))
         {
             foreground_activity = null;
         }

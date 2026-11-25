@@ -75,9 +75,14 @@ public class CleanUp
     {
         if (fileOrDirectory.isDirectory())
         {
-            for (File child : fileOrDirectory.listFiles())
+            // null without read permission or on an I/O error
+            File[] children = fileOrDirectory.listFiles();
+            if (children != null)
             {
-                deleteRecursive(child);
+                for (File child : children)
+                {
+                    deleteRecursive(child);
+                }
             }
         }
 

@@ -100,15 +100,17 @@ public class ConfigXMLModel
 
     public String readConfigXml(File config_xml) throws IOException
     {
-        BufferedReader reader        = new BufferedReader(new FileReader(config_xml));
-        StringBuilder  stringBuilder = new StringBuilder();
-        char[]         buffer        = new char[10];
-        while (reader.read(buffer) != -1)
+        StringBuilder stringBuilder = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new FileReader(config_xml)))
         {
-            stringBuilder.append(new String(buffer));
-            buffer = new char[10];
+            char[] buffer = new char[1024];
+            int    read;
+            // only the chars read, the last block is not full
+            while ((read = reader.read(buffer)) != -1)
+            {
+                stringBuilder.append(buffer, 0, read);
+            }
         }
-        reader.close();
         return stringBuilder.toString();
     }
 

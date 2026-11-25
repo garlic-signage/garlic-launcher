@@ -8,6 +8,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.PowerManager;
+import android.util.Log;
 
 import com.sagiadinos.garlic.launcher.BuildConfig;
 import com.sagiadinos.garlic.launcher.configuration.MainConfiguration;
@@ -84,21 +85,36 @@ public class CommandReceiver extends BroadcastReceiver
 
      private void setDeepStandBy()
      {
-         String            test = MyIntent.getStringExtra("seconds_to_wakeup");
          // ToDo: Refactor this in a method
          StandbyFactory MyStandByFactory   = new StandbyFactory(MyMainConfiguration, MyContext);
          AbstractBaseStandby MyDeepStandBy =  MyStandByFactory.determinePlayerModel();
          if (MyDeepStandBy == null)
              return;
 
-         String            tmp = MyIntent.getStringExtra("seconds_to_wakeup");
-         if (tmp != null)
-             MyDeepStandBy.setSecondsToWakup(Integer.parseInt(tmp));
-         else
-             MyDeepStandBy.setSecondsToWakup(0);
+         MyDeepStandBy.setSecondsToWakup(parseSeconds(MyIntent.getStringExtra("seconds_to_wakeup")));
 
          MyDeepStandBy.executeStandby();
      }
+
+    /**
+     * A missing or not numeric value is handled like 0,
+     * the standby model raises it to its minimum.
+     */
+    private int parseSeconds(String value)
+    {
+        if (value == null)
+            return 0;
+
+        try
+        {
+            return Integer.parseInt(value.trim());
+        }
+        catch (NumberFormatException e)
+        {
+            Log.w("CommandReceiver", "seconds_to_wakeup is not a number: " + value);
+            return 0;
+        }
+    }
 
     private void reboot()
     {

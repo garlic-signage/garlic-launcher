@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.when;
 
@@ -63,6 +64,32 @@ class CopyHandlerTest
         assertEquals(List.of(new File(tmp, "files").getAbsolutePath()), statPaths);
         assertEquals("<smil/>", read(new File(destination, "index.smil")));
         assertEquals("jpg", read(new File(destination, "media/image.jpg")));
+    }
+
+    /**
+     * Every copied file is closed. Linux only: counts /proc/self/fd.
+     */
+    @Test
+    void copyDirectoryLeavesNoOpenFiles() throws IOException
+    {
+        File fd_dir = new File("/proc/self/fd");
+        assumeTrue(fd_dir.isDirectory(), "needs /proc");
+        File source = new File(tmp, "usb/SMIL");
+        assertTrue(source.mkdirs());
+        for (int i = 0; i < 200; i++)
+            write(new File(source, "file" + i + ".jpg"), "content " + i);
+        File destination = new File(tmp, "files/SMIL");
+        assertTrue(destination.getParentFile().mkdirs());
+
+        int open_before = fd_dir.list().length;
+        try (MockedConstruction<StatFs> ignored = mockFreeSpace(1024 * 1024))
+        {
+            new CopyHandler().copy(source, destination);
+        }
+        int open_after = fd_dir.list().length;
+
+        assertEquals(200, destination.list().length);
+        assertTrue(open_after - open_before < 20, "open files: " + open_before + " -> " + open_after);
     }
 
     @Test

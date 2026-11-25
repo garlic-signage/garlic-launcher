@@ -310,6 +310,42 @@ public class MainActivityTest
         assertFalse(isReceiverRegisteredFor(PLAYER_CLOSED_ACTION));
     }
 
+    /**
+     * From Android 8 hasAllPermissions() is false with targetSdk 25.
+     * The receivers must be unregistered anyway.
+     */
+    @Test
+    public void destroyUnregistersReceiversWithoutAllPermissions()
+    {
+        becomeDeviceOwner();
+
+        Robolectric.buildActivity(MainActivity.class).setup().pause().stop().destroy();
+
+        assertFalse(isReceiverRegisteredFor(IN_FOREGROUND_ACTION));
+        assertFalse(isReceiverRegisteredFor(PLAYER_CLOSED_ACTION));
+    }
+
+    @Test
+    public void recreateDoesNotRegisterReceiversTwice()
+    {
+        becomeDeviceOwner();
+        ActivityController<MainActivity> controller = Robolectric.buildActivity(MainActivity.class).setup();
+
+        controller.recreate();
+        controller.recreate();
+
+        assertEquals(1, receiversRegisteredFor(IN_FOREGROUND_ACTION));
+        assertEquals(1, receiversRegisteredFor(PLAYER_CLOSED_ACTION));
+    }
+
+    @Test
+    public void destroyWithoutDeviceOwnerDoesNotCrash()
+    {
+        Robolectric.buildActivity(MainActivity.class).setup().pause().stop().destroy();
+
+        assertTrue(shadowOf(app).getRegisteredReceivers().isEmpty());
+    }
+
     // ---------------------------------------------------------------- service and strict mode
 
     @Test
@@ -690,6 +726,17 @@ public class MainActivityTest
                 return true;
         }
         return false;
+    }
+
+    private int receiversRegisteredFor(String action)
+    {
+        int count = 0;
+        for (ShadowApplication.Wrapper wrapper : shadowOf(app).getRegisteredReceivers())
+        {
+            if (wrapper.getIntentFilter().hasAction(action))
+                count++;
+        }
+        return count;
     }
 
     private void clearStartedActivities()

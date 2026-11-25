@@ -7,6 +7,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.PowerManager;
+import android.util.Log;
 
 import com.sagiadinos.garlic.launcher.BuildConfig;
 import com.sagiadinos.garlic.launcher.deepstandby.AbstractBaseStandby;
@@ -25,7 +26,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -277,22 +277,40 @@ class CommandReceiverTest
     }
 
     /**
-     * Current behaviour: a non numeric value is not caught
-     * and crashes the receiver.
+     * A not numeric value is handled like a missing one.
      */
     @Test
-    void deepStandbyWithNonNumericSecondsThrows()
+    void deepStandbyWithNonNumericSecondsUsesZero()
     {
         Intent IntentMocked = createIntent(ACTION, "deep_standby");
         when(IntentMocked.getStringExtra("seconds_to_wakeup")).thenReturn("one hour");
         AbstractBaseStandby StandbyMocked = mock(AbstractBaseStandby.class);
 
         try (MockedConstruction<StandbyFactory> ignored = mockConstruction(StandbyFactory.class,
+                (mock, context) -> when(mock.determinePlayerModel()).thenReturn(StandbyMocked));
+             MockedStatic<Log> log = mockStatic(Log.class))
+        {
+            new CommandReceiver().onReceive(ContextMocked, IntentMocked);
+
+            verify(StandbyMocked, times(1)).setSecondsToWakup(0);
+            verify(StandbyMocked, times(1)).executeStandby();
+            log.verify(() -> Log.w(anyString(), anyString()), times(1));
+        }
+    }
+
+    @Test
+    void deepStandbySecondsWithBlanks()
+    {
+        Intent IntentMocked = createIntent(ACTION, "deep_standby");
+        when(IntentMocked.getStringExtra("seconds_to_wakeup")).thenReturn(" 1200 ");
+        AbstractBaseStandby StandbyMocked = mock(AbstractBaseStandby.class);
+
+        try (MockedConstruction<StandbyFactory> ignored = mockConstruction(StandbyFactory.class,
                 (mock, context) -> when(mock.determinePlayerModel()).thenReturn(StandbyMocked)))
         {
-            CommandReceiver MyTestClass = new CommandReceiver();
-            assertThrows(NumberFormatException.class, () -> MyTestClass.onReceive(ContextMocked, IntentMocked));
-            verify(StandbyMocked, never()).executeStandby();
+            new CommandReceiver().onReceive(ContextMocked, IntentMocked);
+
+            verify(StandbyMocked, times(1)).setSecondsToWakup(1200);
         }
     }
 

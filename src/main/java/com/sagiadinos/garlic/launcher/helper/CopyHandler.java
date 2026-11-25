@@ -122,13 +122,15 @@ public class CopyHandler
 
     private void copyFile(File source, File destination) throws IOException
     {
-        InputStream in   = new FileInputStream(source);
-        OutputStream out = new FileOutputStream(destination);
-        byte[] buf = new byte[1024];
-        int len;
-        while ((len = in.read(buf)) > 0)
+        try (InputStream in = new FileInputStream(source);
+             OutputStream out = new FileOutputStream(destination))
         {
-            out.write(buf, 0, len);
+            byte[] buf = new byte[1024];
+            int len;
+            while ((len = in.read(buf)) > 0)
+            {
+                out.write(buf, 0, len);
+            }
         }
     }
 }

@@ -9,6 +9,7 @@ import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -84,5 +85,28 @@ class CleanUpCacheTest
         MyTestClass.removeAll();
 
         assertTrue(cache.exists());
+    }
+
+    /**
+     * listFiles() returns null for a directory without read permission.
+     */
+    @Test
+    void unreadableDirInCacheDoesNotCrash()
+    {
+        File locked = new File(cache, "media");
+        assumeTrue(locked.setReadable(false) && !locked.canRead(), "needs a user without root rights");
+        when(DiscSpaceMocked.getFreePercent()).thenReturn(1);
+
+        try
+        {
+            new CleanUp(tmp.getAbsolutePath(), DiscSpaceMocked).removeCache();
+
+            assertTrue(locked.exists());
+            assertFalse(new File(cache, "index.smil").exists());
+        }
+        finally
+        {
+            assertTrue(locked.setReadable(true));
+        }
     }
 }
