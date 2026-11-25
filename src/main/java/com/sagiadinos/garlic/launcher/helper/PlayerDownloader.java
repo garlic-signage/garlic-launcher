@@ -33,25 +33,44 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.concurrent.TimeUnit;
 
+/**
+ * Downloads garlic-player when the network becomes available and hands the
+ * APK to InstallAppReceiver, which checks the signature and installs it.
+ */
 public class PlayerDownloader extends ConnectivityManager.NetworkCallback
 {
-    private final String            PLAYER_DOWNLOAD_URL = "https://garlic-player.com/downloads/garlic-player.apk";
-    private static final String     DOWNLOADED_FILENAME = "garlic-player.apk";
-    private ProgressBar             DownloadProgressBar;
-    private String                  apk_path;
-    private TextView                tvInformation;
-    private Activity                MyActivity;
+    static final String         DEFAULT_DOWNLOAD_URL = "https://garlic-signage.com/downloads/garlic-player.apk";
+    /** wait some seconds to get sure the net is really reachable */
+    static final long           DEFAULT_WAIT_MILLIS  = 5000;
+    private static final String DOWNLOADED_FILENAME  = "garlic-player.apk";
+
+    private final ProgressBar   DownloadProgressBar;
+    private final String        apk_path;
+    private final TextView      tvInformation;
+    private final Activity      MyActivity;
+    private final String        download_url;
+    private final long          wait_millis;
 
     public PlayerDownloader(Activity a, ProgressBar pb, TextView tv)
+    {
+        this(a, pb, tv, DEFAULT_DOWNLOAD_URL, DEFAULT_WAIT_MILLIS);
+    }
+
+    /**
+     * For tests: another source (e.g. a file: URL) and no waiting.
+     */
+    PlayerDownloader(Activity a, ProgressBar pb, TextView tv, String download_url, long wait_millis)
     {
         DownloadProgressBar = pb;
         tvInformation       = tv;
         MyActivity          = a;
         apk_path            = a.getExternalCacheDir() + "/" + DOWNLOADED_FILENAME;
+        this.download_url   = download_url;
+        this.wait_millis    = wait_millis;
     }
 
     @Override
@@ -67,30 +86,20 @@ public class PlayerDownloader extends ConnectivityManager.NetworkCallback
         setInformationText(tvInformation, MyActivity.getString(R.string.no_network));
     }
 
+    String getApkPath()
+    {
+        return apk_path;
+    }
+
     private void startPlayerDownload()
     {
         try
         {
             deleteOldDownload();
-            TimeUnit.SECONDS.sleep(5); // wait some seconds to get sure net is really reachable e.g.
-            URL u                  = new URL(PLAYER_DOWNLOAD_URL);
-            URLConnection c        = u.openConnection();
-            c.connect();
-            int file_size          = c.getContentLength();
-            InputStream in         = c.getInputStream();
-            byte[]      buffer     = new byte[1024];
-            int  buffer_size;
-            long downloaded_so_far = 0;
+            if (wait_millis > 0)
+                Thread.sleep(wait_millis);
 
-            FileOutputStream outputStream = new FileOutputStream(new File(apk_path));
-            while ((buffer_size = in.read(buffer)) > 0)
-            {
-                downloaded_so_far += buffer_size;
-                int percent = (int) ((downloaded_so_far * 100) / file_size);
-
-                DownloadProgressBar.setProgress(percent, true);
-                outputStream.write(buffer, 0, buffer_size);
-            }
+            download();
             if (Installer.getAppNameFromPkgName(MyActivity, apk_path).equals(DeviceOwner.PLAYER_PACKAGE_NAME))
             {
                 installPlayer();
@@ -100,6 +109,30 @@ public class PlayerDownloader extends ConnectivityManager.NetworkCallback
         {
             setInformationText(tvInformation, e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    private void download() throws Exception
+    {
+        URLConnection connection = new URL(download_url).openConnection();
+        connection.connect();
+        long file_size           = connection.getContentLengthLong();
+
+        // closed before the installer reads the file
+        try (InputStream in = connection.getInputStream();
+             OutputStream out = new FileOutputStream(apk_path))
+        {
+            byte[] buffer          = new byte[16384];
+            long downloaded_so_far = 0;
+            int  read;
+            while ((read = in.read(buffer)) > 0)
+            {
+                out.write(buffer, 0, read);
+                downloaded_so_far += read;
+                // the server may not send a length
+                if (file_size > 0)
+                    DownloadProgressBar.setProgress((int) ((downloaded_so_far * 100) / file_size), true);
+            }
         }
     }
 
@@ -123,12 +156,6 @@ public class PlayerDownloader extends ConnectivityManager.NetworkCallback
 
     private void setInformationText(final TextView text, final String value)
     {
-        MyActivity.runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run() {
-                text.setText(value);
-            }
-        });
+        MyActivity.runOnUiThread(() -> text.setText(value));
     }
 }

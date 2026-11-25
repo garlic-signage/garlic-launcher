@@ -53,7 +53,7 @@ remotely through garlic-player and the CMS.
   replaced on the first valid login.
 - **Installation of foreign apps**: every installation runs through
   `InstallAppReceiver`, whether the APK comes from the player, the automatic
-  download of garlic-player (HTTPS from `garlic-player.com`) or a USB stick.
+  download of garlic-player (HTTPS from `garlic-signage.com`) or a USB stick.
   The APK is first copied into the private cache of the launcher; only this
   copy is checked and installed, so the sender cannot replace the file in
   between. It is installed only when it is signed with exactly the certificate
