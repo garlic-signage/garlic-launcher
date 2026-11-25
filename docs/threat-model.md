@@ -92,12 +92,21 @@ operator installs (see 4.3). Every app the operator adds is fully trusted.
 
 ### 4.2 Configuration and installation from USB storage
 
-A USB stick or SD card with `SMIL/`, `config.xml` or `garlic-player.apk` in its
-root is applied when it is mounted: the content is copied and the content URL
-set, Wi-Fi, volume, brightness, standby and reboot times are set, or the APK is
-installed. The APK must be signed with the garlic key (see section 3); the
-configuration has no authentication. Physical access to a USB port or card slot
-is therefore equivalent to administrative access.
+When a USB stick or SD card is mounted, the launcher looks in its root for the
+following and applies only the first one it finds:
+
+1. `SMIL/`: the content is copied to the device and the content URL is set to
+   the copy.
+2. `config.xml`: the content URL and the Wi-Fi connection are set, volume and
+   brightness are stored, then the device reboots. Further settings in the
+   file (Ethernet, standby, reboot times) are parsed but not applied.
+3. `garlic-player.apk`: the APK is installed if it is signed with the garlic
+   key (see section 3).
+
+The content and the configuration have no authentication. Whoever plugs in a
+stick can point the player to any content, connect the device to any Wi-Fi
+and reboot it. Physical access to a USB port or card slot is therefore
+equivalent to administrative access.
 
 **Operator requirement**: mount the device so that its ports and card slots are
 not reachable by the public.
