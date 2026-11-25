@@ -20,11 +20,14 @@ package com.sagiadinos.garlic.launcher.configuration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -83,19 +86,67 @@ class ConfigXMLModelTest
     }
 
 
+    /**
+     * Current behaviour: the file is read in blocks of 10 chars and the last
+     * block is appended completely, so the result is filled up with '\0'.
+     * The parser stops there with an error, after all props were read.
+     * Parsing and storing are tested in ConfigXMLModelParseTest (Robolectric).
+     */
     @Test
-    void parseConfigXml()
+    void readConfigXmlFillsUpLastBlockWithNullChars(@TempDir File tmp) throws IOException
     {
+        File config = new File(tmp, "config.xml");
+        Files.write(config.toPath(), "<config/>abcd".getBytes(StandardCharsets.UTF_8));
+
+        String result = createModel().readConfigXml(config);
+
+        assertEquals("<config/>abcd\0\0\0\0\0\0\0", result);
     }
 
     @Test
-    void copy()
+    void readConfigXmlEmptyFile(@TempDir File tmp) throws IOException
     {
+        File config = new File(tmp, "config.xml");
+        assertTrue(config.createNewFile());
+
+        assertEquals("", createModel().readConfigXml(config));
     }
 
     @Test
-    void storeConfigXmlForPlayer()
+    void copy(@TempDir File tmp) throws IOException
     {
+        byte[] content = new byte[5000];
+        for (int i = 0; i < content.length; i++)
+            content[i] = (byte) i;
+        File source      = new File(tmp, "source.xml");
+        File destination = new File(tmp, "destination.xml");
+        Files.write(source.toPath(), content);
+
+        createModel().copy(source, destination);
+
+        assertArrayEquals(content, Files.readAllBytes(destination.toPath()));
+    }
+
+    @Test
+    void copyOverwritesDestination(@TempDir File tmp) throws IOException
+    {
+        File source      = new File(tmp, "source.xml");
+        File destination = new File(tmp, "destination.xml");
+        Files.write(source.toPath(), "new".getBytes(StandardCharsets.UTF_8));
+        Files.write(destination.toPath(), "old and longer".getBytes(StandardCharsets.UTF_8));
+
+        createModel().copy(source, destination);
+
+        assertEquals("new", new String(Files.readAllBytes(destination.toPath()), StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void copyMissingSourceThrows(@TempDir File tmp)
+    {
+        File destination = new File(tmp, "destination.xml");
+
+        assertThrows(FileNotFoundException.class, () -> createModel().copy(new File(tmp, "missing.xml"), destination));
+        assertFalse(destination.exists());
     }
 
     ConfigXMLModel createModel()

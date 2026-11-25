@@ -162,7 +162,15 @@ public class ConfigXMLModel
 
     private void parseProp(XmlPullParser xpp)
     {
-        switch (xpp.getAttributeValue(null, "name"))
+        String name = xpp.getAttributeValue(null, "name");
+        if (name == null)
+        {
+            // like an unsupported attribute: ignore it
+            Log.w("config_xml", "prop without name ignored");
+            return;
+        }
+
+        switch (name)
         {
             case "net.wifi.ssid":
                 MyNetworkData.setWifiSSID(xpp.getAttributeValue(null, "value"));
@@ -194,13 +202,11 @@ public class ConfigXMLModel
             case "audio.soundLevel":
             case "volume":
             case "hardware.audioOut.0.masterSoundLevel":
-                String s = xpp.getAttributeValue(null, "value").replaceAll("%", "");
-                volume = Integer.parseInt(s);
+                volume = parsePercent(name, xpp.getAttributeValue(null, "value"), volume);
                 break;
             case "display.brightness":
             case "brightness":
-                String str = xpp.getAttributeValue(null, "value").replaceAll("%", "");
-                brightness = Integer.parseInt(str);
+                brightness = parsePercent(name, xpp.getAttributeValue(null, "value"), brightness);
                 break;
             case "standby_mode":
                 standby_mode = xpp.getAttributeValue(null, "value");
@@ -222,6 +228,28 @@ public class ConfigXMLModel
             default:
                 // do nothing on unsupported attributes
                 break;
+        }
+    }
+
+    /**
+     * "50" or "50%". A missing or not numeric value keeps the current one.
+     */
+    private int parsePercent(String name, String value, int current)
+    {
+        if (value == null)
+        {
+            Log.w("config_xml", name + " without value ignored");
+            return current;
+        }
+
+        try
+        {
+            return Integer.parseInt(value.replaceAll("%", ""));
+        }
+        catch (NumberFormatException e)
+        {
+            Log.w("config_xml", name + " with invalid value ignored: " + value);
+            return current;
         }
     }
 
