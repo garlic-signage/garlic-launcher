@@ -170,60 +170,69 @@ public class ConfigXMLModel
             return;
         }
 
+        String value = xpp.getAttributeValue(null, "value");
+        // a prop without value is ignored and keeps the current value;
+        // only the DHCP flag keeps its old meaning: no value means false
+        if (value == null && !name.equals("net.ethernet.dhcp.enabled"))
+        {
+            Log.w("config_xml", name + " without value ignored");
+            return;
+        }
+
         switch (name)
         {
             case "net.wifi.ssid":
-                MyNetworkData.setWifiSSID(xpp.getAttributeValue(null, "value"));
+                MyNetworkData.setWifiSSID(value);
                 break;
             case "net.wifi.authentication":
-                MyNetworkData.setWifiAuthentication(xpp.getAttributeValue(null, "value"));
+                MyNetworkData.setWifiAuthentication(value);
                 break;
             case "net.wifi.encryption":
-                MyNetworkData.setWifiEncryption(xpp.getAttributeValue(null, "value"));
+                MyNetworkData.setWifiEncryption(value);
                 break;
             case "net.wifi.password":
-                MyNetworkData.setWifiPassword(xpp.getAttributeValue(null, "value"));
+                MyNetworkData.setWifiPassword(value);
                 break;
             case "net.ethernet.ip":
-                MyNetworkData.setEthernetIP(xpp.getAttributeValue(null, "value"));
+                MyNetworkData.setEthernetIP(value);
                 break;
             case "net.ethernet.dhcp.enabled":
-                MyNetworkData.setEthernetDHCP(Boolean.parseBoolean(xpp.getAttributeValue(null, "value")));
+                MyNetworkData.setEthernetDHCP(Boolean.parseBoolean(value));
                 break;
             case "net.ethernet.netmask":
-                MyNetworkData.setEthernetNetmask(xpp.getAttributeValue(null, "value"));
+                MyNetworkData.setEthernetNetmask(value);
                 break;
             case "net.ethernet.gateway":
-                MyNetworkData.setEthernetGateway(xpp.getAttributeValue(null, "value"));
+                MyNetworkData.setEthernetGateway(value);
                 break;
             case "net.ethernet.domain":
-                MyNetworkData.setEthernetDomain(xpp.getAttributeValue(null, "value"));
+                MyNetworkData.setEthernetDomain(value);
                 break;
             case "audio.soundLevel":
             case "volume":
             case "hardware.audioOut.0.masterSoundLevel":
-                volume = parsePercent(name, xpp.getAttributeValue(null, "value"), volume);
+                volume = parsePercent(name, value, volume);
                 break;
             case "display.brightness":
             case "brightness":
-                brightness = parsePercent(name, xpp.getAttributeValue(null, "value"), brightness);
+                brightness = parsePercent(name, value, brightness);
                 break;
             case "standby_mode":
-                standby_mode = xpp.getAttributeValue(null, "value");
+                standby_mode = value;
                 break;
             case "schedule.reboot.time":
-                reboot_time = xpp.getAttributeValue(null, "value");
+                reboot_time = value;
                 break;
             case "schedule.reboot.days":
-                String[] tmp = xpp.getAttributeValue(null, "value").toLowerCase().trim().split(" ");
+                String[] tmp = value.toLowerCase().trim().split(" ");
                 reboot_days = new HashSet<>();
                 reboot_days.addAll(Arrays.asList(tmp));
                 break;
             case "net.ethernet.dnsServers":
-                MyNetworkData.setEthernetDNS(xpp.getAttributeValue(null, "value"));
+                MyNetworkData.setEthernetDNS(value);
                 break;
             case "content.serverUrl":
-                MyMainConfiguration.storeSmilIndex(xpp.getAttributeValue(null, "value"));
+                MyMainConfiguration.storeSmilIndex(value);
                 break;
             default:
                 // do nothing on unsupported attributes
@@ -232,16 +241,10 @@ public class ConfigXMLModel
     }
 
     /**
-     * "50" or "50%". A missing or not numeric value keeps the current one.
+     * "50" or "50%". A not numeric value keeps the current one.
      */
     private int parsePercent(String name, String value, int current)
     {
-        if (value == null)
-        {
-            Log.w("config_xml", name + " without value ignored");
-            return current;
-        }
-
         try
         {
             return Integer.parseInt(value.replaceAll("%", ""));

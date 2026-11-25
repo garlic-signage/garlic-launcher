@@ -232,6 +232,93 @@ public class ConfigXMLModelParseTest
     }
 
     @Test
+    public void wifiPropsWithoutValueKeepDefaults()
+    {
+        MyModel.parseConfigXml(config(
+                "<prop name=\"net.wifi.ssid\"/>" +
+                "<prop name=\"net.wifi.authentication\"/>" +
+                "<prop name=\"net.wifi.encryption\"/>" +
+                "<prop name=\"net.wifi.password\"/>"));
+
+        assertEquals("", MyNetworkData.getWifiSSID());
+        assertEquals("WPA2PSK", MyNetworkData.getWifiAuthentication());
+        assertEquals("TKIP", MyNetworkData.getWifiEncryption());
+        assertEquals("", MyNetworkData.getWifiPassword());
+    }
+
+    @Test
+    public void wifiPropWithoutValueKeepsValueBefore()
+    {
+        MyModel.parseConfigXml(config(prop("net.wifi.ssid", "THESSID") + "<prop name=\"net.wifi.ssid\"/>"));
+
+        assertEquals("THESSID", MyNetworkData.getWifiSSID());
+    }
+
+    @Test
+    public void ethernetPropsWithoutValueKeepDefaults()
+    {
+        MyModel.parseConfigXml(config(
+                "<prop name=\"net.ethernet.ip\"/>" +
+                "<prop name=\"net.ethernet.netmask\"/>" +
+                "<prop name=\"net.ethernet.gateway\"/>" +
+                "<prop name=\"net.ethernet.domain\"/>" +
+                "<prop name=\"net.ethernet.dnsServers\"/>"));
+
+        assertEquals("", MyNetworkData.getEthernetIP());
+        assertEquals("255.255.255.0", MyNetworkData.getEthernetNetmask());
+        assertEquals("", MyNetworkData.getEthernetGateway());
+        assertEquals("", MyNetworkData.getEthernetDomain());
+        assertEquals("", MyNetworkData.getEthernetDNS());
+    }
+
+    /**
+     * Unchanged: the DHCP flag without value means false, as before.
+     */
+    @Test
+    public void ethernetDhcpWithoutValueIsFalse()
+    {
+        assertTrue(MyNetworkData.isEthernetDHCP());
+
+        MyModel.parseConfigXml(config("<prop name=\"net.ethernet.dhcp.enabled\"/>"));
+
+        assertFalse(MyNetworkData.isEthernetDHCP());
+    }
+
+    @Test
+    public void standbyAndRebootWithoutValueKeepDefaults()
+    {
+        MyModel.parseConfigXml(config(
+                "<prop name=\"standby_mode\"/>" +
+                "<prop name=\"schedule.reboot.time\"/>" +
+                "<prop name=\"schedule.reboot.days\"/>"));
+
+        assertEquals("", MyModel.getStandbyMode());
+        assertEquals("", MyModel.getRebootTime());
+        assertNull(MyModel.getRebootDays());
+    }
+
+    @Test
+    public void serverUrlWithoutValueKeepsStoredUrl()
+    {
+        MyMainConfiguration.storeSmilIndex("https://cms.test/index.smil");
+
+        MyModel.parseConfigXml(config("<prop name=\"content.serverUrl\"/>"));
+
+        assertEquals("https://cms.test/index.smil", MyMainConfiguration.getSmilIndex());
+    }
+
+    @Test
+    public void emptyValueIsStillTaken()
+    {
+        MyMainConfiguration.storeSmilIndex("https://cms.test/index.smil");
+
+        MyModel.parseConfigXml(config(prop("net.wifi.password", "") + prop("content.serverUrl", "")));
+
+        assertEquals("", MyNetworkData.getWifiPassword());
+        assertEquals("", MyMainConfiguration.getSmilIndex());
+    }
+
+    @Test
     public void propWithoutNameIsIgnored()
     {
         MyModel.parseConfigXml(config("<prop value=\"1\"/>" + prop("volume", "20")));
