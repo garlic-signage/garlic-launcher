@@ -319,6 +319,35 @@ public class ConfigXMLModelParseTest
     }
 
     @Test
+    public void hasVolumeAndBrightnessOnlyWithValidValues()
+    {
+        MyModel.parseConfigXml(config(prop("info.playerName", "Lobby")));
+        assertFalse(MyModel.hasVolume());
+        assertFalse(MyModel.hasBrightness());
+
+        ConfigXMLModel invalid = new ConfigXMLModel(MyNetworkData, MyMainConfiguration);
+        invalid.parseConfigXml(config(prop("volume", "loud") + "<prop name=\"brightness\"/>"));
+        assertFalse(invalid.hasVolume());
+        assertFalse(invalid.hasBrightness());
+
+        ConfigXMLModel valid = new ConfigXMLModel(MyNetworkData, MyMainConfiguration);
+        valid.parseConfigXml(config(prop("volume", "100%") + prop("display.brightness", "0")));
+        assertTrue(valid.hasVolume());
+        assertTrue(valid.hasBrightness());
+        assertEquals(100, valid.getVolume());
+        assertEquals(0, valid.getBrightness());
+    }
+
+    @Test
+    public void invalidVolumeAfterValidKeepsHasVolume()
+    {
+        MyModel.parseConfigXml(config(prop("volume", "40") + prop("volume", "loud")));
+
+        assertTrue(MyModel.hasVolume());
+        assertEquals(40, MyModel.getVolume());
+    }
+
+    @Test
     public void propWithoutNameIsIgnored()
     {
         MyModel.parseConfigXml(config("<prop value=\"1\"/>" + prop("volume", "20")));

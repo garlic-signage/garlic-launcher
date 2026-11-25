@@ -48,6 +48,8 @@ public class ConfigXMLModel
     private MainConfiguration MyMainConfiguration;
     private int volume = 100;
     private int brightness = 100;
+    private boolean has_volume = false;
+    private boolean has_brightness = false;
     private String standby_mode = "";
     private Set<String> reboot_days;
     private String reboot_time = "";
@@ -66,6 +68,18 @@ public class ConfigXMLModel
     public int getBrightness()
     {
         return brightness;
+    }
+
+    /** true when the file contains a valid volume, otherwise getVolume() is the default */
+    public boolean hasVolume()
+    {
+        return has_volume;
+    }
+
+    /** true when the file contains a valid brightness, otherwise getBrightness() is the default */
+    public boolean hasBrightness()
+    {
+        return has_brightness;
     }
 
     public String getStandbyMode()
@@ -211,11 +225,21 @@ public class ConfigXMLModel
             case "audio.soundLevel":
             case "volume":
             case "hardware.audioOut.0.masterSoundLevel":
-                volume = parsePercent(name, value, volume);
+                Integer parsed_volume = parsePercent(name, value);
+                if (parsed_volume != null)
+                {
+                    volume     = parsed_volume;
+                    has_volume = true;
+                }
                 break;
             case "display.brightness":
             case "brightness":
-                brightness = parsePercent(name, value, brightness);
+                Integer parsed_brightness = parsePercent(name, value);
+                if (parsed_brightness != null)
+                {
+                    brightness     = parsed_brightness;
+                    has_brightness = true;
+                }
                 break;
             case "standby_mode":
                 standby_mode = value;
@@ -241,9 +265,9 @@ public class ConfigXMLModel
     }
 
     /**
-     * "50" or "50%". A not numeric value keeps the current one.
+     * "50" or "50%". Returns null for a not numeric value, which is ignored.
      */
-    private int parsePercent(String name, String value, int current)
+    private Integer parsePercent(String name, String value)
     {
         try
         {
@@ -252,7 +276,7 @@ public class ConfigXMLModel
         catch (NumberFormatException e)
         {
             Log.w("config_xml", name + " with invalid value ignored: " + value);
-            return current;
+            return null;
         }
     }
 

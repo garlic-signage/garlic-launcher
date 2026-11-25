@@ -12,6 +12,8 @@ import com.sagiadinos.garlic.launcher.configuration.ConfigXMLModel;
 import com.sagiadinos.garlic.launcher.configuration.MainConfiguration;
 import com.sagiadinos.garlic.launcher.configuration.NetworkData;
 import com.sagiadinos.garlic.launcher.configuration.SharedPreferencesModel;
+import com.sagiadinos.garlic.launcher.configuration.SystemSettings;
+import com.sagiadinos.garlic.launcher.helper.ShellExecute;
 import com.sagiadinos.garlic.launcher.helper.TaskExecutionReport;
 import com.sagiadinos.garlic.launcher.helper.WiFi;
 
@@ -76,6 +78,12 @@ public class ConfigXMLReceiver extends BroadcastReceiver
             MyMainConfiguration.storeVolume(MyConfigXMLModel.getVolume());
             MyMainConfiguration.storeBrightness(MyConfigXMLModel.getBrightness());
 
+            // only what the file contains, otherwise a config without volume would set 100 %
+            SystemSettings MySystemSettings = new SystemSettings(MyContext, MyMainConfiguration, new ShellExecute(Runtime.getRuntime()));
+            if (MyConfigXMLModel.hasVolume())
+                MySystemSettings.configMasterVolume(MyConfigXMLModel.getVolume());
+            if (MyConfigXMLModel.hasBrightness())
+                MySystemSettings.configBrightness(MyConfigXMLModel.getBrightness());
 
             ret = true;
         }

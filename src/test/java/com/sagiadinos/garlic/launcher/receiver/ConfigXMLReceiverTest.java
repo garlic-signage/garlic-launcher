@@ -8,6 +8,7 @@ import android.util.Log;
 
 import com.sagiadinos.garlic.launcher.configuration.ConfigXMLModel;
 import com.sagiadinos.garlic.launcher.configuration.NetworkData;
+import com.sagiadinos.garlic.launcher.configuration.SystemSettings;
 import com.sagiadinos.garlic.launcher.helper.TaskExecutionReport;
 import com.sagiadinos.garlic.launcher.helper.WiFi;
 import com.sagiadinos.garlic.launcher.testutil.FakeSharedPreferences;
@@ -25,6 +26,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
@@ -155,6 +157,64 @@ class ConfigXMLReceiverTest
     }
 
     @Test
+    void volumeAndBrightnessFromConfigAreApplied()
+    {
+        Intent IntentMocked = createIntent(CONFIG_PATH, "task-1");
+
+        try (MockedConstruction<ConfigXMLModel> ignored = mockConfigXMLModel(80, true, 60, true);
+             MockedConstruction<SystemSettings> settings = mockConstruction(SystemSettings.class);
+             MockedConstruction<Intent> ignoredIntents = mockIntents())
+        {
+            new ConfigXMLReceiver().onReceive(ContextMocked, IntentMocked);
+
+            SystemSettings SettingsMocked = settings.constructed().get(0);
+            verify(SettingsMocked, times(1)).configMasterVolume(80);
+            verify(SettingsMocked, times(1)).configBrightness(60);
+            assertEquals(List.of(COMMAND_ACTION), sentActions);
+        }
+    }
+
+    /**
+     * A config without volume or brightness must not set them to the default of 100 %.
+     */
+    @Test
+    void missingVolumeAndBrightnessAreNotApplied()
+    {
+        Intent IntentMocked = createIntent(CONFIG_PATH, "task-1");
+
+        try (MockedConstruction<ConfigXMLModel> ignored = mockConfigXMLModel(100, false, 100, false);
+             MockedConstruction<SystemSettings> settings = mockConstruction(SystemSettings.class);
+             MockedConstruction<Intent> ignoredIntents = mockIntents())
+        {
+            new ConfigXMLReceiver().onReceive(ContextMocked, IntentMocked);
+
+            SystemSettings SettingsMocked = settings.constructed().get(0);
+            verify(SettingsMocked, never()).configMasterVolume(anyInt());
+            verify(SettingsMocked, never()).configBrightness(anyInt());
+            // stored as before
+            assertEquals(100, Prefs.getInt("volume", -1));
+            assertEquals(100, Prefs.getInt("brightness", -1));
+        }
+    }
+
+    @Test
+    void onlyVolumeFromConfigIsApplied()
+    {
+        Intent IntentMocked = createIntent(CONFIG_PATH, "task-1");
+
+        try (MockedConstruction<ConfigXMLModel> ignored = mockConfigXMLModel(30, true, 100, false);
+             MockedConstruction<SystemSettings> settings = mockConstruction(SystemSettings.class);
+             MockedConstruction<Intent> ignoredIntents = mockIntents())
+        {
+            new ConfigXMLReceiver().onReceive(ContextMocked, IntentMocked);
+
+            SystemSettings SettingsMocked = settings.constructed().get(0);
+            verify(SettingsMocked, times(1)).configMasterVolume(30);
+            verify(SettingsMocked, never()).configBrightness(anyInt());
+        }
+    }
+
+    @Test
     void unreadableConfigReportsAborted() throws IOException
     {
         Intent IntentMocked = createIntent(CONFIG_PATH, "task-2");
@@ -185,10 +245,17 @@ class ConfigXMLReceiverTest
 
     private MockedConstruction<ConfigXMLModel> mockConfigXMLModel(int volume, int brightness)
     {
+        return mockConfigXMLModel(volume, false, brightness, false);
+    }
+
+    private MockedConstruction<ConfigXMLModel> mockConfigXMLModel(int volume, boolean has_volume, int brightness, boolean has_brightness)
+    {
         return mockConstruction(ConfigXMLModel.class, (mock, context) -> {
             when(mock.readConfigXml(any(File.class))).thenReturn("<xml/>");
             when(mock.getVolume()).thenReturn(volume);
             when(mock.getBrightness()).thenReturn(brightness);
+            when(mock.hasVolume()).thenReturn(has_volume);
+            when(mock.hasBrightness()).thenReturn(has_brightness);
         });
     }
 

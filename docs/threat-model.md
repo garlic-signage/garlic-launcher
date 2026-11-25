@@ -97,9 +97,10 @@ following and applies only the first one it finds:
 
 1. `SMIL/`: the content is copied to the device and the content URL is set to
    the copy.
-2. `config.xml`: the content URL and the Wi-Fi connection are set, volume and
-   brightness are stored, then the device reboots. Further settings in the
-   file (Ethernet, standby, reboot times) are parsed but not applied.
+2. `config.xml`: the content URL, the Wi-Fi connection, the volume and the
+   brightness (from Android 9, or on rooted devices) are set, then the device
+   reboots. Further settings in the file (Ethernet, standby, reboot times) are
+   parsed but not applied.
 3. `garlic-player.apk`: the APK is installed if it is signed with the garlic
    key (see section 3).
 
