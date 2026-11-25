@@ -44,6 +44,13 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # Robolectric downloads one Android jar per tested SDK into ~/.m2, not into the Gradle cache
+      - name: Cache Robolectric Android jars
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('build.gradle') }}
+
       - name: Test
         run: ./gradlew testGarlicLauncherDebugUnitTest
 
