@@ -180,6 +180,18 @@ class WiFiTest
     }
 
     @Test
+    void connectToNetworkWithoutLocationPermission()
+    {
+        WiFi MyTestClass = createClass();
+        when(WifiManagerMocked.isWifiEnabled()).thenReturn(true);
+        when(WifiManagerMocked.getConfiguredNetworks()).thenThrow(new SecurityException("ACCESS_FINE_LOCATION"));
+
+        assertDoesNotThrow(MyTestClass::connectToNetwork);
+        verify(WifiManagerMocked, times(0)).disconnect();
+        verify(WifiManagerMocked, times(0)).reconnect();
+    }
+
+    @Test
     void connectToNetworkNullAndIsAlreadyEnabled()
     {
         WiFi MyTestClass = createClass();

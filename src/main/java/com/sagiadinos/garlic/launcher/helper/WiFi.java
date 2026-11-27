@@ -19,6 +19,7 @@
 
 package com.sagiadinos.garlic.launcher.helper;
 
+import android.annotation.SuppressLint;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 
@@ -50,11 +51,22 @@ public class WiFi
         }
     }
 
+    // ACCESS_FINE_LOCATION is not declared on purpose; a missing permission is handled by the catch below
+    @SuppressLint("MissingPermission")
     public void connectToNetwork()
     {
         enableWifi();
 
-        List<WifiConfiguration> list = MyWiFiManager.getConfiguredNetworks();
+        List<WifiConfiguration> list;
+        try
+        {
+            list = MyWiFiManager.getConfiguredNetworks();
+        }
+        catch (SecurityException e)
+        {
+            // since Android 10 the call requires ACCESS_FINE_LOCATION; without it, it must not crash the receiver
+            return;
+        }
         if (list == null)
             return;
         for( WifiConfiguration i : list )
