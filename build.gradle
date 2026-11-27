@@ -30,6 +30,10 @@ android {
     defaultConfig {
         applicationId "com.sagiadinos.garlic.launcher"
         minSdkVersion 25
+        // version: base from gradle.properties, build number from the build server (see there); local builds get 1
+        def buildNumber = (project.findProperty('buildNumber') ?: '1') as int
+        versionCode buildNumber
+        versionName "v${project.property('launcherVersion')}.${buildNumber}"
     }
     signingConfigs {
         // For singing keystore.properties includes the credentials
