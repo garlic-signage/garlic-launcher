@@ -102,6 +102,8 @@ public class ConfigXMLReceiver extends BroadcastReceiver
         return ret;
     }
 
+    // WifiConfiguration is deprecated, see WiFi
+    @SuppressWarnings("deprecation")
     private void configWiFi()
     {
         WiFi MyWiFi = new WiFi((WifiManager) MyContext.getSystemService(Context.WIFI_SERVICE), new WifiConfiguration());

@@ -137,6 +137,7 @@ class ConfigXMLReceiverTest
     }
 
     @Test
+    @SuppressWarnings("deprecation") // mocks the deprecated WifiConfiguration that WiFi uses
     void configWithSsidConnectsWiFi() throws IOException
     {
         Intent IntentMocked          = createIntent(CONFIG_PATH, "task-1");
