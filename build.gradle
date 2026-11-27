@@ -20,7 +20,7 @@ repositories {
 }
 
 android {
-    namespace "com.sagiadinos.garlic.launcher"
+    namespace = "com.sagiadinos.garlic.launcher"
     compileSdk {
         version = release(37) {
             minorApiLevel = 1
@@ -29,11 +29,11 @@ android {
     sourceSets { main { java.srcDirs = ['src/main/java', 'src/main/java/Utilis'] } }
     defaultConfig {
         applicationId "com.sagiadinos.garlic.launcher"
-        minSdkVersion 25
+        minSdk = 25
         // version: base from gradle.properties, build number from the build server (see there); local builds get 1
         def buildNumber = (project.findProperty('buildNumber') ?: '1') as int
-        versionCode buildNumber
-        versionName "v${project.property('launcherVersion')}.${buildNumber}"
+        versionCode = buildNumber
+        versionName = "v${project.property('launcherVersion')}.${buildNumber}"
     }
     signingConfigs {
         // For singing keystore.properties includes the credentials
@@ -45,10 +45,10 @@ android {
                 keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 
                 // only release versions should be signed
-                keyAlias keystoreProperties['keyAlias']
-                keyPassword keystoreProperties['keyPassword']
-                storeFile file(keystoreProperties['storeFile'])
-                storePassword keystoreProperties['storePassword']
+                keyAlias = keystoreProperties['keyAlias']
+                keyPassword = keystoreProperties['keyPassword']
+                storeFile = file(keystoreProperties['storeFile'])
+                storePassword = keystoreProperties['storePassword']
             }
         }
     }
@@ -70,7 +70,7 @@ android {
     buildTypes {
         release {
             if (project.rootProject.file('keystore.properties').exists()) {
-                signingConfig signingConfigs.release
+                signingConfig = signingConfigs.release
             }
         }
         debug {
@@ -81,13 +81,13 @@ android {
     flavorDimensions = ["brandings"]
     productFlavors {
         GarlicLauncher {
-            dimension "brandings"
+            dimension = "brandings"
             manifestPlaceholders = [
                     appIcon: "@drawable/ic_garlic_launcher"
             ]
         }
         DS_DE {
-                dimension "brandings"
+                dimension = "brandings"
                 manifestPlaceholders = [
                        appIcon: "@drawable/ic_ds_logo_mobile"
                 ]
