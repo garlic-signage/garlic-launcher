@@ -152,6 +152,8 @@ public class ActivityConfigAdmin extends Activity implements NumberPicker.OnValu
         editPlayerStartDelay.setText(str);
     }
 
+    // android.app.DialogFragment is deprecated (see NumberPickerDialog)
+    @SuppressWarnings("deprecation")
     public void onClickPlayerStartDelay(View view)
     {
         NumberPickerDialog newFragment = new NumberPickerDialog();

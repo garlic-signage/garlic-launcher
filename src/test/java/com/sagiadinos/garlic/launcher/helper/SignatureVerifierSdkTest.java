@@ -93,6 +93,7 @@ public class SignatureVerifierSdkTest
      * The old signatures field is ignored from Android 9.
      */
     @Test
+    @SuppressWarnings("deprecation") // sets the deprecated field on purpose
     public void legacySignaturesFieldIsIgnored() throws PackageManager.NameNotFoundException
     {
         mockInstalled(createInfo(new byte[]{1, 2, 3}));

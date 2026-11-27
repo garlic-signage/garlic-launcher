@@ -10,6 +10,8 @@ import android.widget.NumberPicker;
 import com.sagiadinos.garlic.launcher.configuration.MainConfiguration;
 import com.sagiadinos.garlic.launcher.configuration.SharedPreferencesModel;
 
+// android.app.DialogFragment is deprecated; the AndroidX replacement would add a dependency
+@SuppressWarnings("deprecation")
 public class NumberPickerDialog extends DialogFragment
 {
     MainConfiguration MyMainConfiguration;

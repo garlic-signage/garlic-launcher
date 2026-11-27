@@ -117,9 +117,7 @@ public class MainActivity extends Activity
         MyMainConfiguration.convertValues();
 
         // init screen area
-        DisplayMetrics displayMetrics = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-        MyScreen = new Screen(displayMetrics);
+        MyScreen = new Screen(getDisplayMetrics());
         MyActivityManager = (ActivityManager)  this.getSystemService(Context.ACTIVITY_SERVICE);
         NavigationBar.show(this, MyMainConfiguration, new Intent(this, HUD.class));
 
@@ -600,5 +598,14 @@ public class MainActivity extends Activity
     {
         tvInformation.setText("");
         tvInformation.setVisibility(View.INVISIBLE);
+    }
+
+    // getDefaultDisplay/getMetrics are deprecated since API 30; the replacement WindowMetrics does not exist on API 25
+    @SuppressWarnings("deprecation")
+    private DisplayMetrics getDisplayMetrics()
+    {
+        DisplayMetrics displayMetrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+        return displayMetrics;
     }
 }

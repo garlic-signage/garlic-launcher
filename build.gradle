@@ -52,6 +52,10 @@ android {
             }
         }
     }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
     buildFeatures {
         buildConfig = true
     }
@@ -60,6 +64,8 @@ android {
         unitTests.includeAndroidResources = true
         unitTests.all {
             useJUnitPlatform()
+            // Robolectric/JaCoCo append to the boot classpath, so the JVM cannot use class data sharing and warns about it
+            jvmArgs '-Xshare:off'
             // count classes loaded by the Robolectric class loader in the coverage
             jacoco {
                 includeNoLocationClasses = true
@@ -103,6 +109,8 @@ dependencies {
     testImplementation 'org.robolectric:robolectric:4.17'
     testImplementation 'junit:junit:4.13.2'
     testRuntimeOnly 'org.junit.vintage:junit-vintage-engine:5.10.2'
+    // the JUnit Platform launcher must be declared from Gradle 9 on; same release line as junit-jupiter 5.10.2
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
     implementation 'com.android.support:support-annotations:28.0.0'
 }
 

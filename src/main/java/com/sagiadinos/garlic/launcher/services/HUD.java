@@ -67,17 +67,7 @@ public class HUD extends Service
         overlayPowerBtn = new ImageView(this);
         overlayPowerBtn.setImageResource(R.drawable.back_btn);
 
-        int LAYOUT_FLAG;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-        {
-            // APPLICATION_OVERLAY FOR ANDROID 26+ AS THE PREVIOUS VERSION RAISES ERRORS
-            LAYOUT_FLAG = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
-        }
-        else
-        {
-            // FOR PREVIOUS VERSIONS USE TYPE_PHONE AS THE NEW VERSION IS NOT SUPPORTED
-            LAYOUT_FLAG = WindowManager.LayoutParams.TYPE_PHONE;
-        }
+        int LAYOUT_FLAG = overlayType();
 
         final WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -118,5 +108,16 @@ public class HUD extends Service
         super.onDestroy();
             if (overlayPowerBtn != null)
                 windowManager.removeView(overlayPowerBtn);
+    }
+
+    // TYPE_PHONE is deprecated, but the replacement TYPE_APPLICATION_OVERLAY exists only since Android 8 (API 26)
+    @SuppressWarnings("deprecation")
+    private static int overlayType()
+    {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+        {
+            return WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+        }
+        return WindowManager.LayoutParams.TYPE_PHONE;
     }
 }

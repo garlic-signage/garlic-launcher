@@ -30,6 +30,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@SuppressWarnings("deprecation") // tests the deprecated WifiConfiguration API that WiFi uses
 class WiFiTest
 {
     @Mock

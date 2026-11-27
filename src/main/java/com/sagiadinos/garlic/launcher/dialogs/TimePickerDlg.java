@@ -11,6 +11,8 @@ import com.sagiadinos.garlic.launcher.configuration.SharedPreferencesModel;
 
 import java.util.Calendar;
 
+// android.app.DialogFragment is deprecated; the AndroidX replacement would add a dependency
+@SuppressWarnings("deprecation")
 public class TimePickerDlg extends DialogFragment
 {
     MainConfiguration MyMainConfiguration;

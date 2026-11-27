@@ -69,7 +69,7 @@ class ConfigXMLModelTest
     void readConfigXmlWithMissingConfig()
     {
         final ConfigXMLModel MyModel = createModel();
-        Locale.setDefault(new Locale("pt", "BR"));
+        Locale.setDefault(Locale.forLanguageTag("pt-BR"));
 
         Exception exception = assertThrows(FileNotFoundException.class, new Executable()
         {

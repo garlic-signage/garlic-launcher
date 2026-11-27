@@ -23,6 +23,7 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 
 import com.sagiadinos.garlic.launcher.GarlicLauncherApplication;
 
@@ -41,7 +42,7 @@ public class WatchDogService extends Service
     @Override
     public void onCreate()
     {
-        handler = new Handler();
+        handler = new Handler(Looper.getMainLooper());
         MyApplication = (GarlicLauncherApplication) getApplication();
 
         runnable = new Runnable()

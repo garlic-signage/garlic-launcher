@@ -26,6 +26,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageInstaller;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.os.Build;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -173,7 +174,7 @@ public class Installer
         out.close();
 
         // to commit without re-creating MainActivity
-        PendingIntent pi = PendingIntent.getBroadcast(ctx, session_id, new Intent("com.sagiadinos.garlic.launcher.ACTION_UPDATE"), 0);
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, session_id, new Intent("com.sagiadinos.garlic.launcher.ACTION_UPDATE"), statusIntentFlags());
         session.commit(pi.getIntentSender());
         session.close();
     }
@@ -185,8 +186,17 @@ public class Installer
             return;
         }
         Intent intent = new Intent(ctx, ctx.getClass());
-        PendingIntent sender = PendingIntent.getActivity(ctx, 0, intent, 0);
+        PendingIntent sender = PendingIntent.getActivity(ctx, 0, intent, statusIntentFlags());
         MyPackageInstaller.uninstall(package_name, sender.getIntentSender());
+    }
+
+    /**
+     * The PackageInstaller adds the result (EXTRA_STATUS) to the intent, so it must stay mutable.
+     * FLAG_MUTABLE exists since Android 12; before, 0 means mutable.
+     */
+    private static int statusIntentFlags()
+    {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? PendingIntent.FLAG_MUTABLE : 0;
     }
 
     public static boolean isPackageInstalled(Context c, String check_package)

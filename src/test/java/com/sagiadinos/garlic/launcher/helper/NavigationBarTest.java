@@ -18,6 +18,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@SuppressWarnings("deprecation") // checks the deprecated system UI flags that NavigationBar sets
 class NavigationBarTest
 {
 

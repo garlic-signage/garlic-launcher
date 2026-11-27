@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.os.Handler;
+import android.os.Looper;
 import android.widget.TextView;
 
 import com.sagiadinos.garlic.launcher.configuration.MainConfiguration;
@@ -45,7 +46,7 @@ public class InfoLine extends ConnectivityManager.NetworkCallback
     @Override
     public void onAvailable(@NotNull Network network)
     {
-        Handler handler = new Handler();
+        Handler handler = new Handler(Looper.getMainLooper());
         displayAppInformation();
 
         runnable = new Runnable()

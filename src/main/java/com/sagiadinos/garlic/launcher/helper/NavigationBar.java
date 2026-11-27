@@ -30,6 +30,8 @@ import com.sagiadinos.garlic.launcher.services.HUD;
  */
 public class NavigationBar
 {
+    // setSystemUiVisibility is deprecated since API 30; the replacement WindowInsetsController does not exist on API 25
+    @SuppressWarnings("deprecation")
     public static void hide(Activity a, MainConfiguration sc, Intent i)
     {
         if (sc.hasOwnBackButton())
@@ -49,6 +51,8 @@ public class NavigationBar
 
     }
 
+    // setSystemUiVisibility is deprecated since API 30; the replacement WindowInsetsController does not exist on API 25
+    @SuppressWarnings("deprecation")
     public static void show(Activity a, MainConfiguration sc, Intent i)
     {
         if (sc.hasOwnBackButton())

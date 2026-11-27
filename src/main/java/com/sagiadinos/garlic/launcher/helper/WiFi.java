@@ -26,6 +26,9 @@ import android.net.wifi.WifiManager;
 import com.sagiadinos.garlic.launcher.configuration.NetworkData;
 import java.util.List;
 
+// WifiConfiguration and the WifiManager network calls are deprecated since API 29. The replacements
+// (WifiNetworkSuggestion, WifiNetworkSpecifier) do not configure the system Wi-Fi and do not exist on API 25.
+@SuppressWarnings("deprecation")
 public class WiFi
 {
     private WifiManager MyWiFiManager;
