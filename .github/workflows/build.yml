@@ -1,0 +1,27 @@
+# Builds the signed release APKs on the own runner. It starts only after the CI (unit tests) passed on a push to
+# master, or by hand. GARLIC_SHA is the tested commit: the build script can check out exactly that one.
+name: Build
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: build-launcher
+  cancel-in-progress: false
+
+env:
+  GARLIC_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+jobs:
+  build-android:
+    # event == 'push': a CI run of a pull request from a fork whose branch is named master must not start the build
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - name: Run Android Launcher Build Script
+        run: /home/niko/scripts/build-gl/build.sh
