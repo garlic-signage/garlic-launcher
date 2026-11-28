@@ -3,17 +3,14 @@ package com.sagiadinos.garlic.launcher.receiver;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.media.AudioManager;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
-import com.sagiadinos.garlic.launcher.configuration.ConfigXMLModel;
+import com.sagiadinos.garlic.launcher.configuration.ConfigApplier;
 import com.sagiadinos.garlic.launcher.configuration.MainConfiguration;
 import com.sagiadinos.garlic.launcher.configuration.NetworkData;
 import com.sagiadinos.garlic.launcher.configuration.SharedPreferencesModel;
-import com.sagiadinos.garlic.launcher.configuration.SystemSettings;
-import com.sagiadinos.garlic.launcher.helper.ShellExecute;
 import com.sagiadinos.garlic.launcher.helper.TaskExecutionReport;
 import com.sagiadinos.garlic.launcher.helper.WiFi;
 
@@ -68,30 +65,21 @@ public class ConfigXMLReceiver extends BroadcastReceiver
         }
     }
 
+    /**
+     * Name, content url, volume and brightness like the config of the player,
+     * WiFi only from USB.
+     */
     private boolean parseConfigFile(File file)
     {
         boolean ret = false;
         try
         {
-            // parse configFile first for Wifi content Url etc...
-            MyNetWorkData                   = new NetworkData();
-            ConfigXMLModel MyConfigXMLModel = new ConfigXMLModel(MyNetWorkData, new MainConfiguration(new SharedPreferencesModel(MyContext)));
-            MyConfigXMLModel.parseConfigXml(MyConfigXMLModel.readConfigXml(file));
+            MyNetWorkData = new ConfigApplier(MyContext, MyMainConfiguration).applyFile(file);
 
             if (!MyNetWorkData.getWifiSSID().isEmpty())
             {
                 configWiFi();
             }
-
-            MyMainConfiguration.storeVolume(MyConfigXMLModel.getVolume());
-            MyMainConfiguration.storeBrightness(MyConfigXMLModel.getBrightness());
-
-            // only what the file contains, otherwise a config without volume would set 100 %
-            SystemSettings MySystemSettings = new SystemSettings(MyContext, MyMainConfiguration, new ShellExecute(Runtime.getRuntime()));
-            if (MyConfigXMLModel.hasVolume())
-                MySystemSettings.configMasterVolume(MyConfigXMLModel.getVolume());
-            if (MyConfigXMLModel.hasBrightness())
-                MySystemSettings.configBrightness(MyConfigXMLModel.getBrightness());
 
             ret = true;
         }

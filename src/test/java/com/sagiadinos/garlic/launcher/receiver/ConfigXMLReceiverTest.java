@@ -100,7 +100,8 @@ class ConfigXMLReceiverTest
     {
         Intent IntentMocked = createIntent(CONFIG_PATH, "task-1");
 
-        try (MockedConstruction<ConfigXMLModel> model = mockConfigXMLModel(80, 60);
+        try (MockedConstruction<ConfigXMLModel> model = mockConfigXMLModel(80, true, 60, true);
+             MockedConstruction<SystemSettings> ignoredSettings = mockConstruction(SystemSettings.class);
              MockedConstruction<Intent> intents = mockIntents();
              MockedConstruction<WiFi> wifi = mockConstruction(WiFi.class))
         {
@@ -197,9 +198,9 @@ class ConfigXMLReceiverTest
             SystemSettings SettingsMocked = settings.constructed().get(0);
             verify(SettingsMocked, never()).configMasterVolume(anyInt());
             verify(SettingsMocked, never()).configBrightness(anyInt());
-            // stored as before
-            assertEquals(100, Prefs.getInt("volume", -1));
-            assertEquals(100, Prefs.getInt("brightness", -1));
+            // not stored either, the getters keep their default of 100
+            assertEquals(-1, Prefs.getInt("volume", -1));
+            assertEquals(-1, Prefs.getInt("brightness", -1));
         }
     }
 
