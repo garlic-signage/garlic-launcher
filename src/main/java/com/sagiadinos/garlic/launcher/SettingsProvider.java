@@ -21,9 +21,12 @@ package com.sagiadinos.garlic.launcher;
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.content.UriMatcher;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
+import android.os.Binder;
+import android.os.Process;
 
 import com.sagiadinos.garlic.launcher.configuration.SharedPreferencesModel;
 import com.sagiadinos.garlic.launcher.configuration.PasswordHasher;
@@ -33,6 +36,11 @@ import com.sagiadinos.garlic.launcher.helper.VersionInformation;
 import org.jetbrains.annotations.NotNull;
 import java.util.Objects;
 
+/**
+ * Answers only apps signed like the launcher (garlic-player and the launcher itself).
+ * Otherwise every app could read content url and uuid or try service passwords.
+ * A ContentProvider runs via Binder, so the caller is known, other than with a broadcast.
+ */
 public class SettingsProvider extends ContentProvider
 {
     private static final String PROVIDER_NAME = "com.sagiadinos.garlic.launcher.SettingsProvider";
@@ -75,6 +83,9 @@ public class SettingsProvider extends ContentProvider
     @Override
     public Cursor query(@NotNull Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder)
     {
+        if (!isCallerTrusted())
+            throw new SecurityException("caller is not signed like the launcher");
+
         MatrixCursor cursor                = new MatrixCursor(new String[] {uri.getPathSegments().get(0)});
         MatrixCursor.RowBuilder rowBuilder = cursor.newRow();
         switch (uriMatcher.match(uri))
@@ -102,6 +113,17 @@ public class SettingsProvider extends ContentProvider
                       String[] selectionArgs)
     {
         throw new UnsupportedOperationException("Not supported!");
+    }
+
+    boolean isCallerTrusted()
+    {
+        int caller_uid = Binder.getCallingUid();
+        int own_uid    = Process.myUid();
+        if (caller_uid == own_uid)
+            return true;
+
+        PackageManager pm = Objects.requireNonNull(getContext()).getPackageManager();
+        return pm.checkSignatures(caller_uid, own_uid) == PackageManager.SIGNATURE_MATCH;
     }
 
     private static UriMatcher getUriMatcher()

@@ -8,6 +8,8 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
+import android.os.Binder;
+import android.os.Process;
 
 import com.sagiadinos.garlic.launcher.configuration.MainConfiguration;
 import com.sagiadinos.garlic.launcher.configuration.PasswordHasher;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
 import org.mockito.stubbing.Answer;
 
 import java.util.ArrayList;
@@ -27,15 +30,20 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
@@ -44,6 +52,7 @@ import static org.mockito.Mockito.withSettings;
  * content://com.sagiadinos.garlic.launcher.SettingsProvider/{smil_content_url|service_password|uuid|launcher_version}
  * The cursor has one row with one column named like the path segment.
  * service_password expects the cleartext in "selection" and returns "valid" or "invalid".
+ * Only callers signed like the launcher get an answer, all others a SecurityException.
  */
 class SettingsProviderTest
 {
@@ -107,6 +116,61 @@ class SettingsProviderTest
         MyTestClass = mock(SettingsProvider.class, withSettings().defaultAnswer(CALLS_REAL_METHODS));
         doReturn(ContextMocked).when(MyTestClass).getContext();
         assertTrue(MyTestClass.onCreate());
+        doReturn(true).when(MyTestClass).isCallerTrusted();
+    }
+
+    @Test
+    void untrustedCallerGetsSecurityException()
+    {
+        doReturn(false).when(MyTestClass).isCallerTrusted();
+
+        // the check comes before the uri is evaluated, so every path is refused
+        Uri UriMocked = mock(Uri.class);
+
+        assertThrows(SecurityException.class, () -> MyTestClass.query(UriMocked, null, "secret", null, null));
+        verify(UriMocked, never()).getPathSegments();
+    }
+
+    @Test
+    void callerInOwnProcessIsTrusted()
+    {
+        assertTrusted(10064, 10064, PackageManager.SIGNATURE_NO_MATCH, true);
+        verify(PackageManagerMocked, never()).checkSignatures(10064, 10064);
+    }
+
+    @Test
+    void callerSignedLikeLauncherIsTrusted()
+    {
+        assertTrusted(10065, 10064, PackageManager.SIGNATURE_MATCH, true);
+    }
+
+    @Test
+    void callerWithForeignSignatureIsNotTrusted()
+    {
+        assertTrusted(10099, 10064, PackageManager.SIGNATURE_NO_MATCH, false);
+    }
+
+    @Test
+    void callerWithUnknownUidIsNotTrusted()
+    {
+        assertTrusted(10099, 10064, PackageManager.SIGNATURE_UNKNOWN_PACKAGE, false);
+    }
+
+    private void assertTrusted(int caller_uid, int own_uid, int signature_result, boolean expected)
+    {
+        doCallRealMethod().when(MyTestClass).isCallerTrusted();
+        when(PackageManagerMocked.checkSignatures(caller_uid, own_uid)).thenReturn(signature_result);
+        try (MockedStatic<Binder> binder = mockStatic(Binder.class);
+             MockedStatic<Process> process = mockStatic(Process.class))
+        {
+            binder.when(Binder::getCallingUid).thenReturn(caller_uid);
+            process.when(Process::myUid).thenReturn(own_uid);
+
+            if (expected)
+                assertTrue(MyTestClass.isCallerTrusted());
+            else
+                assertFalse(MyTestClass.isCallerTrusted());
+        }
     }
 
     @Test
