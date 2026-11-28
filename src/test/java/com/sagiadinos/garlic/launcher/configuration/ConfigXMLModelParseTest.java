@@ -156,6 +156,16 @@ public class ConfigXMLModelParseTest
     }
 
     @Test
+    public void playerName()
+    {
+        MyModel.parseConfigXml("<configuration><userPref>" +
+                "<prop name=\"info.playerName\" value=\"Lobby 1\"/>" +
+                "</userPref></configuration>");
+
+        assertEquals("Lobby 1", MyMainConfiguration.getPlayerName());
+    }
+
+    @Test
     public void unknownPropsAreIgnored()
     {
         MyModel.parseConfigXml(config(prop("info.playerName", "Lobby") + prop("volume", "20")));

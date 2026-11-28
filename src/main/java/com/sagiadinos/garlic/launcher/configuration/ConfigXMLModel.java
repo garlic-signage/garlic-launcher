@@ -260,6 +260,9 @@ public class ConfigXMLModel
             case "content.serverUrl":
                 MyMainConfiguration.storeSmilIndex(value);
                 break;
+            case "info.playerName":
+                MyMainConfiguration.storePlayerName(value);
+                break;
             default:
                 // do nothing on unsupported attributes
                 break;

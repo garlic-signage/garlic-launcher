@@ -70,6 +70,16 @@ public class MainConfiguration
         return Model.getString("smil_index_uri");
     }
 
+    public void storePlayerName(String player_name)
+    {
+        Model.storeString("player_name", player_name);
+    }
+
+    public String getPlayerName()
+    {
+        return Model.getString("player_name");
+    }
+
     public void storePlayerStartDelay(int player_start_delay)
     {
         Model.storeInt("player_start_delay", player_start_delay);

@@ -95,6 +95,26 @@ class MainConfigurationTest
     }
 
     @Test
+    void storePlayerName()
+    {
+        MainConfiguration MyMainConfiguration = createClass();
+
+        MyMainConfiguration.storePlayerName("Lobby");
+
+        verify(SharedPreferencesModelMocked, times(1)).storeString("player_name", "Lobby");
+    }
+
+    @Test
+    void getPlayerName()
+    {
+        MainConfiguration MyMainConfiguration = createClass();
+
+        MyMainConfiguration.getPlayerName();
+
+        verify(SharedPreferencesModelMocked, times(1)).getString("player_name");
+    }
+
+    @Test
     void getSmilIndex()
     {
         MainConfiguration MyMainConfiguration = createClass();

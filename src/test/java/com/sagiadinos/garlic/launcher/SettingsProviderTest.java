@@ -8,12 +8,14 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
+import android.os.Bundle;
 import android.os.Binder;
 import android.os.Process;
 
 import com.sagiadinos.garlic.launcher.configuration.MainConfiguration;
 import com.sagiadinos.garlic.launcher.configuration.PasswordHasher;
 import com.sagiadinos.garlic.launcher.configuration.SharedPreferencesModel;
+import com.sagiadinos.garlic.launcher.helper.CommandExecutor;
 import com.sagiadinos.garlic.launcher.testutil.FakeSharedPreferences;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -129,6 +131,58 @@ class SettingsProviderTest
 
         assertThrows(SecurityException.class, () -> MyTestClass.query(UriMocked, null, "secret", null, null));
         verify(UriMocked, never()).getPathSegments();
+    }
+
+    @Test
+    void untrustedCallerCannotApplyConfig()
+    {
+        doReturn(false).when(MyTestClass).isCallerTrusted();
+
+        assertThrows(SecurityException.class, () -> MyTestClass.call("apply_config", "<configuration/>", null));
+        assertEquals(null, Prefs.getString("smil_index_uri", null));
+    }
+
+    @Test
+    void untrustedCallerCannotSendCommand()
+    {
+        doReturn(false).when(MyTestClass).isCallerTrusted();
+
+        try (MockedConstruction<CommandExecutor> executor = mockConstruction(CommandExecutor.class))
+        {
+            assertThrows(SecurityException.class, () -> MyTestClass.call("command", "reboot", null));
+            assertEquals(0, executor.constructed().size());
+        }
+    }
+
+    @Test
+    void commandPassesTaskIdAndSecondsToExecutor()
+    {
+        Bundle ExtrasMocked = mock(Bundle.class);
+        when(ExtrasMocked.getString("task_id")).thenReturn("task-4711");
+        when(ExtrasMocked.getString("seconds_to_wakeup")).thenReturn("3600");
+
+        try (MockedConstruction<CommandExecutor> executor = mockConstruction(CommandExecutor.class,
+                (mock, context) -> when(mock.execute("deep_standby", "task-4711", "3600")).thenReturn(true)))
+        {
+            assertTrue(MyTestClass.executeCommand("deep_standby", ExtrasMocked));
+            verify(executor.constructed().get(0)).execute("deep_standby", "task-4711", "3600");
+        }
+    }
+
+    @Test
+    void commandWithoutExtrasPassesNull()
+    {
+        try (MockedConstruction<CommandExecutor> executor = mockConstruction(CommandExecutor.class))
+        {
+            assertFalse(MyTestClass.executeCommand("unknown", null));
+            verify(executor.constructed().get(0)).execute("unknown", null, null);
+        }
+    }
+
+    @Test
+    void unknownCallMethodThrows()
+    {
+        assertThrows(IllegalArgumentException.class, () -> MyTestClass.call("something", "x", null));
     }
 
     @Test
