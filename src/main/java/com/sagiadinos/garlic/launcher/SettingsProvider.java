@@ -31,12 +31,9 @@ import android.os.Process;
 
 import com.sagiadinos.garlic.launcher.configuration.SharedPreferencesModel;
 import com.sagiadinos.garlic.launcher.configuration.PasswordHasher;
-import com.sagiadinos.garlic.launcher.configuration.ConfigXMLModel;
+import com.sagiadinos.garlic.launcher.configuration.ConfigApplier;
 import com.sagiadinos.garlic.launcher.configuration.MainConfiguration;
-import com.sagiadinos.garlic.launcher.configuration.NetworkData;
-import com.sagiadinos.garlic.launcher.configuration.SystemSettings;
 import com.sagiadinos.garlic.launcher.helper.CommandExecutor;
-import com.sagiadinos.garlic.launcher.helper.ShellExecute;
 import com.sagiadinos.garlic.launcher.helper.VersionInformation;
 
 import org.jetbrains.annotations.NotNull;
@@ -48,9 +45,7 @@ import java.util.Objects;
  * A ContentProvider runs via Binder, so the caller is known, other than with a broadcast.
  *
  * call("apply_config", configuration_xml, null) takes the content of a configuration.xml
- * (not a path) and applies player name, content url, volume and brightness.
- * WiFi and ethernet are ignored on purpose: a wrong remote network config locks the device
- * out and the password would be in clear text on the shared storage. They stay USB only.
+ * (not a path) and hands it to the ConfigApplier.
  * Returns a bundle with "result" = "accepted" or "rejected" (empty content).
  *
  * call("command", reboot|screen_off|screen_on|deep_standby, extras) executes a command
@@ -149,7 +144,7 @@ public class SettingsProvider extends ContentProvider
             case METHOD_APPLY_CONFIG:
                 accepted = arg != null && !arg.trim().isEmpty();
                 if (accepted)
-                    applyConfig(arg);
+                    new ConfigApplier(Objects.requireNonNull(getContext()), MyMainConfiguration).apply(arg);
                 break;
             case METHOD_COMMAND:
                 accepted = executeCommand(arg, extras);
@@ -168,26 +163,6 @@ public class SettingsProvider extends ContentProvider
         String task_id           = extras != null ? extras.getString("task_id") : null;
         String seconds_to_wakeup = extras != null ? extras.getString("seconds_to_wakeup") : null;
         return new CommandExecutor(Objects.requireNonNull(getContext())).execute(command, task_id, seconds_to_wakeup);
-    }
-
-    private void applyConfig(String xml)
-    {
-        // network data is parsed but not applied, see class comment
-        ConfigXMLModel MyConfigXMLModel = new ConfigXMLModel(new NetworkData(), MyMainConfiguration);
-        MyConfigXMLModel.parseConfigXml(xml); // stores content url and player name
-
-        // only what the content contains, otherwise a config without volume would set 100 %
-        SystemSettings MySystemSettings = new SystemSettings(Objects.requireNonNull(getContext()), MyMainConfiguration, new ShellExecute(Runtime.getRuntime()));
-        if (MyConfigXMLModel.hasVolume())
-        {
-            MyMainConfiguration.storeVolume(MyConfigXMLModel.getVolume());
-            MySystemSettings.configMasterVolume(MyConfigXMLModel.getVolume());
-        }
-        if (MyConfigXMLModel.hasBrightness())
-        {
-            MyMainConfiguration.storeBrightness(MyConfigXMLModel.getBrightness());
-            MySystemSettings.configBrightness(MyConfigXMLModel.getBrightness());
-        }
     }
 
     boolean isCallerTrusted()

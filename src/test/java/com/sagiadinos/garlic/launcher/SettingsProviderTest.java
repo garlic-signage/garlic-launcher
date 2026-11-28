@@ -12,6 +12,7 @@ import android.os.Bundle;
 import android.os.Binder;
 import android.os.Process;
 
+import com.sagiadinos.garlic.launcher.configuration.ConfigApplier;
 import com.sagiadinos.garlic.launcher.configuration.MainConfiguration;
 import com.sagiadinos.garlic.launcher.configuration.PasswordHasher;
 import com.sagiadinos.garlic.launcher.configuration.SharedPreferencesModel;
@@ -140,6 +141,18 @@ class SettingsProviderTest
 
         assertThrows(SecurityException.class, () -> MyTestClass.call("apply_config", "<configuration/>", null));
         assertEquals(null, Prefs.getString("smil_index_uri", null));
+    }
+
+    @Test
+    void untrustedCallerDoesNotReachConfigApplier()
+    {
+        doReturn(false).when(MyTestClass).isCallerTrusted();
+
+        try (MockedConstruction<ConfigApplier> applier = mockConstruction(ConfigApplier.class))
+        {
+            assertThrows(SecurityException.class, () -> MyTestClass.call("apply_config", "<configuration/>", null));
+            assertEquals(0, applier.constructed().size());
+        }
     }
 
     @Test
