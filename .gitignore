@@ -74,3 +74,6 @@ lint/outputs/
 lint/tmp/
 # lint/reports/
 
+
+# signing credentials
+keystore.properties

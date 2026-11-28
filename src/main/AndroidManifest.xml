@@ -100,7 +100,7 @@
         <receiver
             android:name=".receiver.ConfigXMLReceiver"
             android:enabled="true"
-            android:exported="false" >
+            android:exported="true" >
             <intent-filter>
                 <action android:name="com.sagiadinos.garlic.launcher.receiver.ConfigXMLReceiver" />
             </intent-filter>

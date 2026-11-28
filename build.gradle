@@ -41,7 +41,6 @@ android {
                 def keystoreProperties = new Properties()
                 keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 
-                // only release versions should be signed
                 keyAlias = keystoreProperties['keyAlias']
                 keyPassword = keystoreProperties['keyPassword']
                 storeFile = file(keystoreProperties['storeFile'])
@@ -78,6 +77,11 @@ android {
         }
         debug {
             enableUnitTestCoverage = true
+            // same key as release: the launcher installs only APKs signed like itself,
+            // so a debug launcher must accept the release player
+            if (project.rootProject.file('keystore.properties').exists()) {
+                signingConfig = signingConfigs.release
+            }
         }
     }
 
