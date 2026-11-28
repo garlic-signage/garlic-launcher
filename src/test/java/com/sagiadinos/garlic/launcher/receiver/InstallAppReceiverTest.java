@@ -3,6 +3,7 @@ package com.sagiadinos.garlic.launcher.receiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.Environment;
 import android.util.Log;
 
 import com.sagiadinos.garlic.launcher.helper.Installer;
@@ -11,6 +12,7 @@ import com.sagiadinos.garlic.launcher.helper.SignatureVerifier;
 import com.sagiadinos.garlic.launcher.helper.TaskExecutionReport;
 import com.sagiadinos.garlic.launcher.testutil.FakeSharedPreferences;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -46,14 +48,17 @@ import static org.mockito.Mockito.when;
  * extras "apk_path" and "task_id".
  * The APK is copied to the private cache of the launcher first; only this copy
  * is checked and installed, so the sender cannot swap the file in between.
- * Only APKs signed like the launcher are installed. APKs from a path containing
- * "cache" (player download cache) are deleted afterwards in every case.
+ * Only APKs signed like the launcher are installed. APKs inside the player cache
+ * (external storage/garlic-player/cache) or the external cache of the launcher are
+ * deleted afterwards in every case; the canonical path counts, so no file outside
+ * these directories can be deleted via "..".
  */
 class InstallAppReceiverTest
 {
     private static final String ACTION           = "com.sagiadinos.garlic.launcher.receiver.InstallAppReceiver";
     private static final String LAUNCHER_PACKAGE = "com.sagiadinos.garlic.launcher";
     private static final String APK_CONTENT      = "signed apk";
+    private static final String PLAYER_CACHE     = "garlic-player/cache";
 
     @TempDir
     File tmp;
@@ -64,6 +69,8 @@ class InstallAppReceiverTest
     File private_copy;
     List<Object> verifierArguments;
     List<String> verifiedContent;
+    File launcher_external_cache;
+    MockedStatic<Environment> EnvironmentMocked;
 
     @BeforeEach
     void setUp()
@@ -79,6 +86,17 @@ class InstallAppReceiverTest
         when(ContextMocked.getPackageName()).thenReturn(LAUNCHER_PACKAGE);
         when(ContextMocked.getPackageManager()).thenReturn(PackageManagerMocked);
         when(ContextMocked.getCacheDir()).thenReturn(launcher_cache);
+
+        launcher_external_cache = new File(tmp, "external/Android/data/launcher/cache");
+        when(ContextMocked.getExternalCacheDir()).thenReturn(launcher_external_cache);
+        EnvironmentMocked = mockStatic(Environment.class);
+        EnvironmentMocked.when(Environment::getExternalStorageDirectory).thenReturn(tmp);
+    }
+
+    @AfterEach
+    void tearDown()
+    {
+        EnvironmentMocked.close();
     }
 
     @Test
@@ -184,7 +202,7 @@ class InstallAppReceiverTest
     @Test
     void foreignSignatureIsRejectedAndCachedApkDeleted() throws IOException
     {
-        File apk            = createApk("cache");
+        File apk            = createApk(PLAYER_CACHE);
         Intent IntentMocked = createIntent(ACTION, apk.getAbsolutePath(), "t1");
 
         try (MockedConstruction<Installer> installer = mockConstruction(Installer.class);
@@ -223,9 +241,58 @@ class InstallAppReceiverTest
     }
 
     @Test
+    void foreignSignatureWithCacheInNameOutsideCacheIsNotDeleted() throws IOException
+    {
+        File apk = createApk("usb/cache");
+        assertFalse(rejectAndReturnIfDeleted(apk.getAbsolutePath(), apk));
+    }
+
+    @Test
+    void pathTraversalOutOfPlayerCacheIsNotDeleted() throws IOException
+    {
+        File prefs = createApk("launcher/shared_prefs");
+        assertTrue(new File(tmp, PLAYER_CACHE).mkdirs());
+        String traversal = new File(tmp, PLAYER_CACHE + "/../../launcher/shared_prefs/garlic-player.apk").getPath();
+
+        assertFalse(rejectAndReturnIfDeleted(traversal, prefs));
+    }
+
+    @Test
+    void foreignSignatureInLauncherExternalCacheIsDeleted() throws IOException
+    {
+        assertTrue(launcher_external_cache.mkdirs());
+        File apk = write(new File(launcher_external_cache, "garlic-player.apk"), APK_CONTENT);
+
+        assertTrue(rejectAndReturnIfDeleted(apk.getAbsolutePath(), apk));
+    }
+
+    @Test
+    void playerCacheDirectoryItselfIsNotDeleted() throws IOException
+    {
+        File cache_dir = new File(tmp, PLAYER_CACHE);
+        assertTrue(cache_dir.mkdirs());
+
+        assertFalse(rejectAndReturnIfDeleted(cache_dir.getAbsolutePath(), cache_dir));
+    }
+
+    private boolean rejectAndReturnIfDeleted(String apk_path, File expected)
+    {
+        Intent IntentMocked = createIntent(ACTION, apk_path, "t1");
+
+        try (MockedConstruction<Installer> ignored = mockConstruction(Installer.class);
+             MockedConstruction<SignatureVerifier> ignoredVerifier = mockVerifier(false);
+             MockedStatic<TaskExecutionReport> ignoredReport = mockStatic(TaskExecutionReport.class);
+             MockedStatic<Log> ignoredLog = mockStatic(Log.class))
+        {
+            new InstallAppReceiver().onReceive(ContextMocked, IntentMocked);
+        }
+        return !expected.exists();
+    }
+
+    @Test
     void notRootedInstallsPrivateCopyViaPackageInstaller() throws IOException
     {
-        File apk            = createApk("cache");
+        File apk            = createApk(PLAYER_CACHE);
         Intent IntentMocked = createIntent(ACTION, apk.getAbsolutePath(), "t1");
         List<String> installedContent = new ArrayList<>();
 
@@ -282,7 +349,7 @@ class InstallAppReceiverTest
     @Test
     void notRootedInstallFailureReportsAborted() throws IOException
     {
-        File apk            = createApk("cache");
+        File apk            = createApk(PLAYER_CACHE);
         Intent IntentMocked = createIntent(ACTION, apk.getAbsolutePath(), "t1");
 
         try (MockedConstruction<Installer> ignored = mockConstruction(Installer.class,
@@ -302,7 +369,7 @@ class InstallAppReceiverTest
     void rootedInstallSuccessReportsCompleted() throws IOException
     {
         Prefs.edit().putBoolean("is_device_rooted", true).commit();
-        File apk            = createApk("cache");
+        File apk            = createApk(PLAYER_CACHE);
         Intent IntentMocked = createIntent(ACTION, apk.getAbsolutePath(), "t1");
 
         try (MockedConstruction<Installer> installer = mockConstruction(Installer.class,
@@ -326,7 +393,7 @@ class InstallAppReceiverTest
     void rootedInstallFailureReportsAborted() throws IOException
     {
         Prefs.edit().putBoolean("is_device_rooted", true).commit();
-        File apk            = createApk("cache");
+        File apk            = createApk(PLAYER_CACHE);
         Intent IntentMocked = createIntent(ACTION, apk.getAbsolutePath(), "t1");
 
         try (MockedConstruction<Installer> ignored = mockConstruction(Installer.class,

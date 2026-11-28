@@ -22,6 +22,7 @@ package com.sagiadinos.garlic.launcher.receiver;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Environment;
 import android.util.Log;
 
 import java.io.File;
@@ -53,6 +54,7 @@ public class InstallAppReceiver extends BroadcastReceiver
     private static final String TAG          = "InstallAppReceiver";
     private static final String INSTALL_DIR  = "install";
     private static final String INSTALL_FILE = "install.apk";
+    private static final String PLAYER_CACHE = "garlic-player/cache";
     MainConfiguration MyMainConfiguration;
     @Override
     public void onReceive(Context ctx, Intent intent)
@@ -93,7 +95,7 @@ public class InstallAppReceiver extends BroadcastReceiver
             Log.w(TAG, "Could not copy " + file_path + ": " + e.getMessage());
             TaskExecutionReport.append(task_id, "aborted");
             deleteFile(private_copy);
-            deleteFromPlayerCache(file_path);
+            deleteFromPlayerCache(ctx, file_path);
             return;
         }
         String install_path = private_copy.getAbsolutePath();
@@ -104,7 +106,7 @@ public class InstallAppReceiver extends BroadcastReceiver
             Log.w(TAG, "Rejected installation of " + file_path + ": signature does not match the launcher");
             TaskExecutionReport.append(task_id, "aborted");
             deleteFile(private_copy);
-            deleteFromPlayerCache(file_path);
+            deleteFromPlayerCache(ctx, file_path);
             return;
         }
 
@@ -133,7 +135,7 @@ public class InstallAppReceiver extends BroadcastReceiver
         }
 
         deleteFile(private_copy);
-        deleteFromPlayerCache(file_path);
+        deleteFromPlayerCache(ctx, file_path);
     }
 
     private void copyToPrivateDir(File source, File destination) throws IOException
@@ -163,14 +165,36 @@ public class InstallAppReceiver extends BroadcastReceiver
     /**
      * delete downloaded files in all cases which are in player cache
      * important! No delete - No further updates
+     *
+     * The sender controls file_path, so only files whose canonical path is inside
+     * the player cache or the download cache of the launcher are deleted.
+     * Otherwise a path like .../cache/../shared_prefs/x.xml would delete launcher data.
      */
-    private void deleteFromPlayerCache(String file_path)
+    private void deleteFromPlayerCache(Context ctx, String file_path)
     {
-        if (file_path.contains("cache"))
+        File file = new File(file_path);
+        if (!isInside(new File(Environment.getExternalStorageDirectory(), PLAYER_CACHE), file) &&
+            !isInside(ctx.getExternalCacheDir(), file))
         {
-            File file = new File(file_path);
-            //noinspection ResultOfMethodCallIgnored
-            file.delete();
+            return;
+        }
+        //noinspection ResultOfMethodCallIgnored
+        file.delete();
+    }
+
+    private boolean isInside(File dir, File file)
+    {
+        if (dir == null)
+            return false;
+
+        try
+        {
+            String canonical_dir = dir.getCanonicalPath() + File.separator;
+            return file.getCanonicalPath().startsWith(canonical_dir);
+        }
+        catch (IOException e)
+        {
+            return false;
         }
     }
 }
