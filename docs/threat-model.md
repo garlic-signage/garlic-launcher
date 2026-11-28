@@ -68,27 +68,51 @@ remotely through garlic-player and the CMS.
 
 ## 4. Design Decisions
 
-### 4.1 Local broadcasts and the settings provider without permission
+### 4.1 Interfaces to garlic-player
 
-garlic-player is a separate app and talks to the launcher by broadcasts
-(`CommandReceiver`, `InstallAppReceiver`, `PlayerClosedReceiver`) and by the
-content provider `SettingsProvider` (content URL, UUID, launcher version, check
-of the service password). These components are exported **without a
-permission**. Any app installed on the device can therefore reboot it, switch
-the screen off, start deep standby, stop the player, have an APK installed that
-is signed with the garlic key (an update of the launcher or the player, see
-section 3), read the content URL and the player UUID, and test passwords against
-the service password.
+garlic-player is a separate app. It talks to the launcher in two ways.
 
-A signature permission would close this, but players already deployed,
-including the legacy player, do not request it. Android would drop their
-broadcasts silently, and they could no longer reboot the device or update
-themselves. Launcher 1.x therefore keeps these components open and keeps the
-names of their actions and extras unchanged.
+**Settings provider, caller checked.** The content provider `SettingsProvider`
+is exported without a permission, but answers only apps signed with the
+certificate of the launcher (`PackageManager.checkSignatures` on the calling
+UID). Every other caller gets a `SecurityException` before the request is
+evaluated. A content provider runs via Binder, so the caller is known.
+
+- `query()`: content URL, UUID, launcher version, check of the service password.
+- `call("apply_config", <content of configuration.xml>)`: sets player name,
+  content URL, volume and brightness. Wi-Fi and Ethernet are ignored on purpose,
+  see 4.2.
+- `call("command", reboot|screen_off|screen_on|deep_standby)`: the same
+  commands as the `CommandReceiver`, extras `task_id` and `seconds_to_wakeup`.
+
+**Broadcasts without permission (legacy).** `CommandReceiver` and
+`PlayerClosedReceiver` are exported **without a permission**. A broadcast does
+not identify its sender, so these receivers cannot check the caller. Any app
+installed on the device can therefore reboot it, switch the screen off, start
+deep standby and stop the player.
+
+Players already deployed, including the legacy player, use these broadcasts
+and do not request a permission. Launcher 1.x therefore keeps them open and
+keeps the names of their actions and extras unchanged. They will be removed
+with launcher 2.0; newer players use the settings provider.
+
+**Installation broadcast (permanent).** `InstallAppReceiver` is exported
+without a permission as well and stays so, also after launcher 2.0: every
+player version, however old, can update itself through it, and its interface
+(action `com.sagiadinos.garlic.launcher.receiver.InstallAppReceiver`, extras
+`apk_path` and `task_id`) remains constant. Its security does not depend on the
+sender: only APKs signed with the garlic key are installed (an update of the
+launcher or the player, see section 3), Android refuses downgrades, and the
+sent APK is deleted afterwards only if its canonical path is inside the player
+cache or the external cache of the launcher. So any app can at most trigger
+the installation of a garlic APK that is newer than the installed one.
 
 This is acceptable only because the device is a dedicated kiosk: no user can
 install apps, and the only apps are the launcher, the player and tools the
 operator installs (see 4.3). Every app the operator adds is fully trusted.
+
+The `ConfigXMLReceiver` is not exported; only the USB handling of the launcher
+uses it.
 
 ### 4.2 Configuration and installation from USB storage
 
@@ -97,10 +121,15 @@ following and applies only the first one it finds:
 
 1. `SMIL/`: the content is copied to the device and the content URL is set to
    the copy.
-2. `config.xml`: the content URL, the Wi-Fi connection, the volume and the
-   brightness (from Android 9, or on rooted devices) are set, then the device
-   reboots. Further settings in the file (Ethernet, standby, reboot times) are
-   parsed but not applied.
+2. `config.xml`: the player name, the content URL, the Wi-Fi connection, the
+   volume and the brightness (from Android 9, or on rooted devices) are set,
+   then the device reboots. Volume and brightness are set only when the file
+   contains them. Further settings in the file (Ethernet, standby, reboot
+   times) are parsed but not applied.
+
+Wi-Fi is set only from USB, never from the player (`apply_config`): a wrong
+network configuration sent remotely would lock the device out, and the
+password would lie in clear text on the shared storage of the player.
 3. `garlic-player.apk`: the APK is installed if it is signed with the garlic
    key (see section 3).
 
@@ -122,11 +151,12 @@ installed and configured by the operator and is fully trusted.
 
 ## 5. Accepted Risks and Known Weaknesses
 
-- Exported components without permission, see 4.1.
+- Exported broadcast receivers without permission (commands and player
+  closed until 2.0, installation permanent), see 4.1.
 - No authentication for the USB configuration, see 4.2.
 - The service password hash uses PBKDF2 with HMAC-SHA1 (HMAC-SHA256 needs
-  Android 8) and 100,000 iterations. The provider allows unlimited password
-  tests by local apps, see 4.1.
+  Android 8) and 100,000 iterations. Only apps signed with the garlic key can
+  test passwords via the provider, see 4.1.
 - On rooted devices commands run through `su`; root weakens every property of
   the platform and is not recommended.
 

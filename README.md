@@ -30,7 +30,6 @@ One solution is to root Android, but rooted devices are a potential security ris
 - Support remote software updates with garlic player
 - Software updates via USB-Stick/SD-Card
 - Configuration via USB-Stick/SD-Card
-- A second app can be opened
 - Tiny and resource efficient. The signed apk is less than 80KB
 - automatic player download when network is active
 - Custom back button as overlay for some rooted images (explanation down)
